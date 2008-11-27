@@ -10,8 +10,14 @@ our @EXPORT_OK = qw(initGUI);
 
 package GridWindow;
 
+use Wx::Grid;
+
 # General constants
-use Wx qw(wxID_ANY);
+use Wx qw(wxID_ANY wxPOINT wxSIZE);
+# Sizer constants
+use Wx qw(wxVERTICAL wxHORIZONTAL wxALL wxEXPAND);
+# Grid constants
+use Wx qw(wxGridSelectRows);
 
 use base 'Wx::MDIChildFrame';
 
@@ -20,7 +26,23 @@ sub new {
 
     my $self = $class->SUPER::new(@_);  # call the superclass' constructor
     
-    my $panel = Wx::Panel->new($self, wxID_ANY);
+    #my $panel = Wx::Panel->new($self, wxID_ANY);
+    
+    my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
+    my $grid = Wx::Grid->new($self, wxID_ANY);
+    $grid->CreateGrid( 20, 2 );
+
+    $grid->SetColLabelValue(0, "Relation Name");
+    $grid->SetColLabelValue(1, "# Tuples");
+    
+    $sizer->Add($grid, 1, wxEXPAND);
+    # Get rid of border
+    $grid->SetCellHighlightPenWidth(0);
+    $grid->SetSelectionMode(wxGridSelectRows);
+    $grid->EnableEditing(0);
+    $grid->AutoSize();
+    
+    $self->SetSizer($sizer);
 }
 
 package RDBTeachApp;
@@ -40,6 +62,7 @@ my $ID_FILE_EXIT = 4;
 
 my $frame;
 
+# TODO: Replace that with an override of wxApp::OnExit
 sub onFileExit {
     my ($self, $event) = @_;
     if (Wx::MessageBox("Do you really want to quit?", "Exit RDBTeach", wxYES_NO) == wxYES) {
