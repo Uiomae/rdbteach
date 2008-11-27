@@ -3,6 +3,7 @@ use strict;
 use Parse::RecDescent;
 use Data::Dumper;
 use Data::Compare;
+use gui;
 
 my $temp = $/;
 undef $/;
@@ -203,7 +204,9 @@ my $validALG = $algParser->startrule($algText);
 print "Valid ALG FILE\n" if $validALG;
 print "Invalid ALG FILE\n" unless $validALG;
 
-print Dumper(%relation);
+#print Dumper(%relation);
+
+initGUI();
 
 #my $main = MainWindow->new();
 #$main->Button(
