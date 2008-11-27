@@ -1,8 +1,9 @@
-package Module;
+package gui;
 use strict;
 use warnings;
 use Wx;
 use Wx::MDI;
+use Wx::Perl::Carp;
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -11,6 +12,8 @@ our @EXPORT_OK = qw(initGUI);
 package GridWindow;
 
 use Wx::Grid;
+use Wx::Perl::Carp;
+use parser;
 
 # General constants
 use Wx qw(wxID_ANY wxPOINT wxSIZE);
@@ -25,8 +28,28 @@ sub new {
     my $class = shift;
 
     my $self = $class->SUPER::new(@_);  # call the superclass' constructor
+    my $title = $self->GetTitle();
     
-    #my $panel = Wx::Panel->new($self, wxID_ANY);
+    # Parse the file
+    # Try to open and read
+    my $dummy = $/;
+    undef $/;
+    open (FILE, "$title") || croak "Can't open '$title': $!\n";
+    my $fileText = <FILE>;
+    close FILE;
+    $/ = $dummy;
+    # Get only the extension in uppercase
+    $title =~ s/.*\.(.*)/\U$1\E/;
+    my %result;
+    if ($title eq "RDB") {
+        my $temp = parser::parseRDB($fileText);
+        if ($temp == 0) {
+            croak "Error parsing RDB file";
+        } else {
+            %result = %{$temp};
+            carp(%result);
+        }
+    }
     
     my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
     my $grid = Wx::Grid->new($self, wxID_ANY);
@@ -74,7 +97,10 @@ sub onFileExit {
 sub onOpen {
     my ($self, $event) = @_;
     
-    my $newChild = GridWindow->new($frame, wxID_ANY, "Child");
+    my $file = Wx::FileSelector("Select file to open", ".", "", "", "WinRDBI files (*.rdb, *.alg)|*.rdb;*.alg|RDB Database (*.rdb)|*.rdb|Relational Algebra files (*.alg)|*.alg");
+    if ($file) {
+        my $newChild = GridWindow->new($frame, wxID_ANY, $file);
+    }
 }
 
 # this method is called automatically when an application object is
