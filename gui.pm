@@ -47,13 +47,20 @@ sub new {
             croak "Error parsing RDB file";
         } else {
             %result = %{$temp};
-            carp(%result);
         }
     }
     
+    my $nRows = scalar keys(%result);
+    
     my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
     my $grid = Wx::Grid->new($self, wxID_ANY);
-    $grid->CreateGrid( 20, 2 );
+    $grid->CreateGrid( $nRows, 2 );
+    
+    my $counter = 0;
+    while(my ($key, $value) = each(%result)) {
+        $grid->SetCellValue($counter, 0, $key);
+        $grid->SetCellValue($counter++, 1, scalar @{$value});
+    }
 
     $grid->SetColLabelValue(0, "Relation Name");
     $grid->SetColLabelValue(1, "# Tuples");
