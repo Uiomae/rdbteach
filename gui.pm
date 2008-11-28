@@ -28,10 +28,11 @@ my $ID_RELATION_GRID = 10;
 
 use base 'Wx::MDIChildFrame';
 
-my (%relation, %attribs, $splitter);
-
 sub onRelationSelect {
     my ($self, $event) = @_;
+    my $splitter = ${$self->{splitter}};
+    my %relation = %{$self->{relation}};
+    my %attribs = %{$self->{attribs}};
 
     my $object = $event->GetEventObject();
     my $relName = $object->GetCellValue($event->GetRow(), 0);
@@ -89,7 +90,10 @@ sub new {
     $self->Freeze();
     my $title = $self->GetTitle();
 
-    $splitter = Wx::SplitterWindow->new($self, wxID_ANY);
+    my $splitter = Wx::SplitterWindow->new($self, wxID_ANY);
+
+    $self->{splitter} = \$splitter;
+
     my $win1 = Wx::Panel->new($splitter, wxID_ANY);
     my $win2 = Wx::Panel->new($splitter, wxID_ANY);
 
@@ -103,6 +107,9 @@ sub new {
     $/ = $dummy;
     # Get only the extension in uppercase
     $title =~ s/.*\.(.*)/\U$1\E/;
+    my (%relation, %attribs);
+    $self->{relation} = \%relation;
+    $self->{attribs}  = \%attribs;
     if ($title eq "RDB") {
         my @temp = parser::parseRDB($fileText);
         if (@temp == 0) {
