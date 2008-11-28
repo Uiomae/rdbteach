@@ -34,6 +34,11 @@ my $ID_RELATION_GRID = 10;
 my $ID_CODE_EDITOR = 11;
 
 use constant STYLE_COMMENT => 1;
+use constant STYLE_KEYWORD => 2;
+
+use constant CHAR_LF => 0x0A;
+use constant CHAR_CR => 0x0D;
+use constant CHAR_SPACE => 0x20;
 
 use base 'Wx::MDIChildFrame';
 
@@ -42,17 +47,41 @@ sub onStyleNeeded {
     my $insideAnything = 0;
 
     my $codeEditor = ${$self->{codeEditor}};
+    my @keywords = @{$self->{keywords}};
     my $start = $codeEditor->GetEndStyled();    # this is the first character that needs styling
     my $end = $event->GetPosition();          # this is the last character that needs styling
     my $pos = $start;
 
     $codeEditor->StartStyling($start, 31);   # Style text
+    if ($codeEditor->GetStyleAt($start - 1) == STYLE_COMMENT) {
+        my $lineNum = $codeEditor->LineFromPosition($start);
+        my $lineLast = $codeEditor->GetLineEndPosition($lineNum);
+        $codeEditor->SetStyling($lineLast - $start, STYLE_COMMENT);
+        $pos = $lineLast;
+        # Skip endline
+        while ($lineNum == $codeEditor->LineFromPosition($pos)) {
+            $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+            $pos++;
+        }
+    }
     while ($pos < $end) {
         # Iterate over lines
         my $lineNum = $codeEditor->LineFromPosition($pos);
         my $lineLast = $codeEditor->GetLineEndPosition($lineNum);
+        #if ($end < $lineLast) {
+        #    $lineLast = $end;
+        #}
         while ($pos < $lineLast) {
-            while (($pos < $lineLast) && ($codeEditor->GetCharAt($pos) == 32)) {
+            my $entered = 0;
+            my $lastChar = $codeEditor->GetCharAt($pos - 1);
+            while ((($pos - 1) > 0) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)) {
+                $entered = 1;
+                $pos--;
+                $lastChar = $codeEditor->GetCharAt($pos - 1);
+            }
+            $codeEditor->StartStyling($pos, 31) if ($entered);
+
+            while (($pos < $lineLast) && ($codeEditor->GetCharAt($pos) == CHAR_SPACE)) {
                 $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
                 $pos++;
             }
@@ -63,15 +92,25 @@ sub onStyleNeeded {
                 $pos = $lineLast;
             } else {
                 my $pos2 = $pos + 1;
-                while (($pos2 < $lineLast) && ($codeEditor->GetCharAt($pos2) != 32)) {
+                $lastChar = $codeEditor->GetCharAt($pos2);
+                while (($pos2 < $lineLast) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)) {
                     $pos2++;
+                    $lastChar = $codeEditor->GetCharAt($pos2);
                 }
                 my $word = $codeEditor->GetTextRange($pos, $pos2);
                 print "Word '$word'\n";
                 # Search in the list of keywords
-                # ...
-                # Not in the list of keywords, style as normal (INCLUDING space)
-                $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                if ( grep {$_ eq $word} @keywords ) {
+                    # In the list of keywords, style as keyword
+                    $codeEditor->SetStyling($pos2 - $pos, STYLE_KEYWORD);
+                    # Style space
+                    $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+                    $pos2++;
+                } else {
+                    # Not in the list of keywords, style as normal (INCLUDING space)
+                    $pos2++;
+                    $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                }
                 $pos = $pos2;
             }
         }
@@ -81,6 +120,7 @@ sub onStyleNeeded {
             $pos++;
         }
     }
+    print "Start $start and end $end\n";
 }
 
 sub onRelationSelect {
@@ -160,6 +200,7 @@ sub new {
     EVT_STC_STYLENEEDED($self, $ID_CODE_EDITOR, \&onStyleNeeded);
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
     $codeEditor->StyleSetForeground(STYLE_COMMENT, wxGREEN);
+    $codeEditor->StyleSetFontAttr(STYLE_KEYWORD, 10, "Courier New", 1, 0, 0);
     # End creating styled code editor
 
     $mainSizer->Add($codeEditor, 1, wxEXPAND);
@@ -207,6 +248,8 @@ sub new {
     } else {
         if ($title eq "ALG") {
             $codeEditor->SetText($fileText);
+            my @keywords = qw(select project);
+            $self->{keywords} = \@keywords;
             %relation = ();
             %attribs = ();
         } else {
