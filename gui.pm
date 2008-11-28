@@ -12,6 +12,7 @@ our @EXPORT_OK = qw(initGUI);
 package GridWindow;
 
 use Wx::Grid;
+use Wx::STC;
 use Wx::Perl::Carp;
 use parser;
 
@@ -23,8 +24,11 @@ use Wx qw(wxID_ANY wxPOINT wxSIZE);
 use Wx qw(wxVERTICAL wxHORIZONTAL wxALL wxEXPAND);
 # Grid constants
 use Wx qw(wxGridSelectRows);
+# StyledTextCtrl constants
+use Wx qw(wxSTC_STYLE_DEFAULT);
 
 my $ID_RELATION_GRID = 10;
+my $ID_CODE_EDITOR = 11;
 
 use base 'Wx::MDIChildFrame';
 
@@ -90,7 +94,31 @@ sub new {
     $self->Freeze();
     my $title = $self->GetTitle();
 
-    my $splitter = Wx::SplitterWindow->new($self, wxID_ANY);
+    # Create horizontal splitter window and childs
+    my $mainSplitter = Wx::SplitterWindow->new($self, wxID_ANY);
+    $mainSplitter->SetSashGravity(1);
+    my $mainWin1 = Wx::Panel->new($mainSplitter, wxID_ANY);
+    my $mainSizer = Wx::BoxSizer->new(wxHORIZONTAL);
+    $mainWin1->SetSizer($mainSizer);
+
+    # Create styled code editor
+    my $codeEditor = Wx::StyledTextCtrl->new($mainWin1, $ID_CODE_EDITOR);
+    $self->{codeEditor} = \$codeEditor;
+
+    $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
+
+    $mainSizer->Add($codeEditor, 1, wxEXPAND);
+    $mainWin1->Layout();
+
+    my $mainWin2 = Wx::Panel->new($mainSplitter, wxID_ANY);
+    $mainSizer = Wx::BoxSizer->new(wxHORIZONTAL);
+    $mainWin2->SetSizer($mainSizer);
+
+    $mainSplitter->SplitHorizontally($mainWin1, $mainWin2, $mainSplitter->GetSize()->GetHeight() - 200);
+
+    # Create vertical splitter, child windows and relation grid
+    my $splitter = Wx::SplitterWindow->new($mainWin2, wxID_ANY);
+    $mainSizer->Add($splitter, 1, wxEXPAND);
 
     $self->{splitter} = \$splitter;
 
@@ -111,12 +139,23 @@ sub new {
     $self->{relation} = \%relation;
     $self->{attribs}  = \%attribs;
     if ($title eq "RDB") {
+        $mainWin1->Show(0);
+        $mainSplitter->Initialize($mainWin2);
+        $mainWin2->Layout();
         my @temp = parser::parseRDB($fileText);
         if (@temp == 0) {
             croak "Error parsing RDB file";
         } else {
             %relation = %{$temp[0][0]};
             %attribs = %{$temp[0][1]};
+        }
+    } else {
+        if ($title eq "ALG") {
+            $codeEditor->SetText($fileText);
+            %relation = ();
+            %attribs = ();
+        } else {
+            croak "Filetype '$title' not recognized";
         }
     }
 
