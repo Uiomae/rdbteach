@@ -2,4 +2,4 @@
 use strict;
 use gui;
 
-initGUI();
+gui::initGUI();

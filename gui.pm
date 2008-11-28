@@ -162,10 +162,16 @@ package RDBTeachApp;
 use base 'Wx::App';
 use Wx::Event qw(EVT_BUTTON EVT_MENU);
 
+use Wx qw(wxSIZE);
+
 # General constants
-use Wx qw(wxID_ANY);
+use Wx qw(wxID_ANY wxNO_BORDER);
 # wxMessageDialog constants
 use Wx qw(wxYES_NO wxYES wxNO wxCANCEL wxOK wxICON_ERROR wxICON_QUESTION wxICON_INFORMATION);
+# Image constants
+use Wx qw(wxBITMAP_TYPE_PNG);
+# Toolbar constants
+use Wx qw(wxTB_FLAT wxTB_HORIZONTAL);
 
 my $ID_FILE_OPEN = 1;
 my $ID_FILE_NEWDB = 2;
@@ -203,6 +209,13 @@ sub OnInit {
                                 [-1, -1],         # default position
                                 [800, 600],       # size
                                );
+
+    # Load images
+    my $iconOpen = Wx::Bitmap->new("icons/folder.png", wxBITMAP_TYPE_PNG);
+    my $iconNewDB = Wx::Bitmap->new("icons/database_lightning.png", wxBITMAP_TYPE_PNG);
+    my $iconNewQuery = Wx::Bitmap->new("icons/script_lightning.png", wxBITMAP_TYPE_PNG);
+    # End loading images
+
     # Creates the menu
     my $menuBar = Wx::MenuBar->new();
 
@@ -232,14 +245,32 @@ sub OnInit {
     $frame->SetMenuBar($menuBar);
     # End creating the menu
 
+    # Creates the toolbar
+    my $toolBar = $frame->CreateToolBar(wxNO_BORDER | wxTB_FLAT | wxTB_HORIZONTAL);
+    $toolBar->SetToolBitmapSize(wxSIZE(16, 16));
+    # Using the same IDs as their menu counterparts make the events working for all of them!
+    $toolBar->AddTool($ID_FILE_OPEN, "Open", $iconOpen);
+    $toolBar->AddSeparator();
+    $toolBar->AddTool($ID_FILE_NEWDB, "New Database", $iconNewDB);
+    $toolBar->AddTool($ID_FILE_NEWQUERY, "New Query", $iconNewQuery);
+    $toolBar->Realize();
+    # End creating the toolbar
+
+    # Creates the statusbar
+    my $statusBar = $frame->CreateStatusBar();
+    $statusBar->SetStatusText("RDBTeach ready");
+    # End creating the statusbar
+
     $self->SetTopWindow($frame);
     # show the frame
     $frame->Show( 1 );
 }
 
-package main;
+package gui;
 
 sub initGUI {
+    # Init image handlers
+    Wx::InitAllImageHandlers();
     # create the application object, this will call OnInit
     my $app = RDBTeachApp->new;
     # process GUI events from the application this function will not
