@@ -15,6 +15,8 @@ use Wx::Grid;
 use Wx::Perl::Carp;
 use parser;
 
+use Wx::Event qw(EVT_GRID_CMD_SELECT_CELL);
+
 # General constants
 use Wx qw(wxID_ANY wxPOINT wxSIZE);
 # Sizer constants
@@ -22,13 +24,29 @@ use Wx qw(wxVERTICAL wxHORIZONTAL wxALL wxEXPAND);
 # Grid constants
 use Wx qw(wxGridSelectRows);
 
+my $ID_RELATION_GRID = 10;
+
 use base 'Wx::MDIChildFrame';
+
+my %relation;
+
+sub onRelationSelect {
+    my ($self, $event) = @_;
+    
+    my $object = $event->GetEventObject();
+    carp("Selected " . $relation{$object->GetCellValue($event->GetRow(), 0)});
+}
 
 sub new {
     my $class = shift;
 
     my $self = $class->SUPER::new(@_);  # call the superclass' constructor
     my $title = $self->GetTitle();
+    
+    my $splitter = Wx::SplitterWindow->new($self, wxID_ANY);
+    my $win1 = Wx::Panel->new($splitter, wxID_ANY);
+    my $win2 = Wx::Panel->new($splitter, wxID_ANY);
+    $splitter->SplitVertically($win1, $win2);
     
     # Parse the file
     # Try to open and read
@@ -40,27 +58,28 @@ sub new {
     $/ = $dummy;
     # Get only the extension in uppercase
     $title =~ s/.*\.(.*)/\U$1\E/;
-    my %result;
     if ($title eq "RDB") {
         my $temp = parser::parseRDB($fileText);
         if ($temp == 0) {
             croak "Error parsing RDB file";
         } else {
-            %result = %{$temp};
+            %relation = %{$temp};
         }
     }
     
-    my $nRows = scalar keys(%result);
+    my $nRows = scalar keys(%relation);
     
     my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
-    my $grid = Wx::Grid->new($self, wxID_ANY);
+    my $grid = Wx::Grid->new($win1, $ID_RELATION_GRID);
     $grid->CreateGrid( $nRows, 2 );
     
     my $counter = 0;
-    while(my ($key, $value) = each(%result)) {
+    while(my ($key, $value) = each(%relation)) {
         $grid->SetCellValue($counter, 0, $key);
         $grid->SetCellValue($counter++, 1, scalar @{$value});
     }
+    
+    EVT_GRID_CMD_SELECT_CELL($self, $ID_RELATION_GRID, \&onRelationSelect);
 
     $grid->SetColLabelValue(0, "Relation Name");
     $grid->SetColLabelValue(1, "# Tuples");
@@ -72,7 +91,7 @@ sub new {
     $grid->EnableEditing(0);
     $grid->AutoSize();
     
-    $self->SetSizer($sizer);
+    $win1->SetSizer($sizer);
 }
 
 package RDBTeachApp;
