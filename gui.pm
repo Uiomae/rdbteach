@@ -34,7 +34,8 @@ sub onRelationSelect {
     my ($self, $event) = @_;
 
     my $object = $event->GetEventObject();
-    my $tableData = $relation{$object->GetCellValue($event->GetRow(), 0)};
+    my $relName = $object->GetCellValue($event->GetRow(), 0);
+    my @tableData = @{$relation{$relName}};
 
     my $win2 = $splitter->GetWindow2();
 
@@ -46,7 +47,27 @@ sub onRelationSelect {
     # Add a new grid
     my $grid = Wx::Grid->new($win2, wxID_ANY);
 
-    $grid->CreateGrid(scalar @{$tableData}, 4);
+    my %currentAttribs = %{$attribs{$relName}};
+    $grid->CreateGrid(scalar @tableData, scalar keys %currentAttribs);
+
+    # Fill table
+    my $counter = 0;
+    my %colOrder = ();
+    # First set the column labels
+    while(my ($key, $value) = each(%currentAttribs)) {
+        $colOrder{$key} = $counter;
+        $grid->SetColLabelValue($counter++, $key . '/' . $value);
+    }
+
+    # Next, fill the current values
+    $counter = 0;
+    foreach my $tuple (@tableData) {
+        while(my ($key, $value) = each(%$tuple)) {
+            $grid->SetCellValue($counter, $colOrder{$key}, $value);
+        }
+        $counter++;
+    }
+
     $grid->SetCellHighlightPenWidth(0);
     $grid->SetSelectionMode(wxGridSelectRows);
     $grid->EnableEditing(0);

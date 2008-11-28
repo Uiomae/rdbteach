@@ -105,11 +105,10 @@ sub addRelation {
     $relation{$_[1]} = [];
     my %tempHash;
     # Join attributes
-    # TODO: Join this PROPERLY! (this currently returns an array, not a hash)
     foreach my $temp (@{$_[3]}) {
-        %tempHash = (%tempHash, %{$temp});
+        %tempHash = (%tempHash, %$temp);
     }
-    $attribs{$_[1]} = [%tempHash];
+    $attribs{$_[1]} = {%tempHash};
     $currentRelation = \$relation{$_[1]};
     @currentAttribs = keys %tempHash;
 }
@@ -171,7 +170,6 @@ sub parseRDB {
     my $validRDB = $rdbParser->startrule($rdbText);
     my %newRel = %relation;
     my %newAttribs = %attribs;
-    print Dumper(%attribs);
     return [\%newRel, \%newAttribs] if $validRDB;
     return 0 unless $validRDB;
 }
