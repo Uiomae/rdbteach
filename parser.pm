@@ -15,14 +15,15 @@ our @EXPORT_OK = qw(parseRDB parseALG);
 
 my @currentAttribs = [];
 my %relation = ();
+my %attribs = ();
 my $currentRelation;
 
 sub checkAssignment {
     shift;
-    
+
     my $relationName = $_[0];
     my $queryResult = $_[-1];
-    
+
     #print "RelationName: $relationName QueryResult: " . Dumper($queryResult);
     $relation{$relationName} = $queryResult;
 }
@@ -31,23 +32,23 @@ my $generalGrammar = q(
     startrule : query_definition(s?) eofile | <error>
 
     eofile : /^\\Z/ { $return = 1; }
-    
+
     comment : /^%+(.*?)$/m
     identifier : /[a-zA-Z][a-zA-Z0-9]*/m
-    
+
     # Types
     # TODO: Add double quotes to "char" type
     char : /'(.*?)'/i
     int : /[+-]?\\d+/
     float : /[+-]?\\d+(?:\\.\\d+)?/
     numeric : float | int
-    
+
     constant : char | numeric
-    
+
     query_definition : comment | assignment_statement ';' | query ';'
-    
+
     assignment_statement : relation_name '(' attribute_list(s /,/) ')' ':=' query | relation_name ':=' query { parser::checkAssignment(@item); }
-    
+
     attribute_list : identifier
     relation_name : identifier
 );
@@ -56,11 +57,11 @@ sub parseProject {
     shift;
     my $attributes = $_[1];
     my $expression = $_[3];
-    
+
     # print "Attr: " . Dumper($attributes) . "\nExpr: " . Dumper($expression) . "\n";
 
     # Check attributes
-    
+
     # Do the actual projection
     my @temp;
     foreach my $tempHash (@{$relation{$expression}}) {
@@ -73,37 +74,44 @@ sub parseProject {
         }
         push(@temp, {%anotherHash}) unless $found;
     }
-    
+
     #print "Temp: " . Dumper(@temp);
     return \@temp;
 }
 
 my $algGrammar = $generalGrammar . q(
     query : expression
-    
+
     liteExpression : '(' expression ')' | identifier
     expression : select_expr | project_expr | binary_expr | liteExpression
     select_expr : 'select' condition '(' expression ')'
     project_expr : 'project' attribute(s /,/) '(' expression ')' { $return = parser::parseProject(@item); }
     binary_expr : liteExpression binary_op liteExpression
-    
+
     condition : and_condition 'or' condition | and_condition
     and_condition : rel_formula 'and' and_condition | rel_formula
     rel_formula : operand relational_op operand | '(' condition ')'
     binary_op : 'union' | 'njoin' | 'product' | 'difference' | 'intersect'
-    
+
     # subAttribute : '.' identifier { $return = $item[2]; }
     attribute : identifier # subAttribute(?) { $return = [$item[1], $item[2]]; }
     operand : attribute | constant
-    
+
     relational_op : '=' | '>' | '<' | '<>' | '>=' | '<='
 );
 
 sub addRelation {
     shift;
     $relation{$_[1]} = [];
+    my %tempHash;
+    # Join attributes
+    # TODO: Join this PROPERLY! (this currently returns an array, not a hash)
+    foreach my $temp (@{$_[3]}) {
+        %tempHash = (%tempHash, %{$temp});
+    }
+    $attribs{$_[1]} = [%tempHash];
     $currentRelation = \$relation{$_[1]};
-    @currentAttribs = @{$_[3]};
+    @currentAttribs = keys %tempHash;
 }
 
 sub addTuple {
@@ -130,24 +138,24 @@ my $rdbGrammar = q(
     startrule : (relation tuple(s?))(s?) eofile | <error>
 
     eofile : /^\\Z/ { $return = 1; }
-    
+
     # Types
     # TODO: Add double quotes to "char" type
     char : /'(.*?)'/i { $return = parser::checkChar(@item); }
     int : /[+-]?\\d+/
     float : /[+-]?\\d+(?:\\.\\d+)?/
     numeric : float | int
-    
+
     constant : char | numeric
-    
+
     identifier : /[a-zA-Z][a-zA-Z0-9]*/m
-    
+
     typeName : 'char' | 'numeric'
-    
-    attribute : identifier '/' typeName { $return = $item[1]; }
-    
+
+    attribute : identifier '/' typeName { $return = {$item[1] => $item[3]}; }
+
     relation : '@' identifier '(' attribute(s /,/) ')' ':' identifier(s /,/) { parser::addRelation(@item); }
-    
+
     tuple : constant(s /,/) { parser::addTuple(@item, $thisline); }
 );
 
@@ -157,9 +165,14 @@ my $algParser = Parse::RecDescent->new($algGrammar);
 
 sub parseRDB {
     my ($rdbText) = @_;
-    
+
+    %relation = ();
+    %attribs = ();
     my $validRDB = $rdbParser->startrule($rdbText);
-    return \%relation if $validRDB;
+    my %newRel = %relation;
+    my %newAttribs = %attribs;
+    print Dumper(%attribs);
+    return [\%newRel, \%newAttribs] if $validRDB;
     return 0 unless $validRDB;
 }
 

@@ -28,26 +28,50 @@ my $ID_RELATION_GRID = 10;
 
 use base 'Wx::MDIChildFrame';
 
-my %relation;
+my (%relation, %attribs, $splitter);
 
 sub onRelationSelect {
     my ($self, $event) = @_;
-    
+
     my $object = $event->GetEventObject();
-    carp("Selected " . $relation{$object->GetCellValue($event->GetRow(), 0)});
+    my $tableData = $relation{$object->GetCellValue($event->GetRow(), 0)};
+
+    my $win2 = $splitter->GetWindow2();
+
+    # Stop redrawing
+    $win2->Freeze();
+    # Destroy existing grid if any
+    $win2->DestroyChildren();
+
+    # Add a new grid
+    my $grid = Wx::Grid->new($win2, wxID_ANY);
+
+    $grid->CreateGrid(scalar @{$tableData}, 4);
+    $grid->SetCellHighlightPenWidth(0);
+    $grid->SetSelectionMode(wxGridSelectRows);
+    $grid->EnableEditing(0);
+    $grid->AutoSize();
+    $grid->SetRowLabelSize(40);
+
+    $win2->GetSizer()->Add($grid, 1, wxEXPAND);
+    $win2->GetSizer()->Layout();
+
+    # Restart redrawing
+    $win2->Thaw();
 }
 
 sub new {
     my $class = shift;
 
     my $self = $class->SUPER::new(@_);  # call the superclass' constructor
+    # Stop redrawing
+    $self->Freeze();
     my $title = $self->GetTitle();
-    
-    my $splitter = Wx::SplitterWindow->new($self, wxID_ANY);
+
+    $splitter = Wx::SplitterWindow->new($self, wxID_ANY);
     my $win1 = Wx::Panel->new($splitter, wxID_ANY);
     my $win2 = Wx::Panel->new($splitter, wxID_ANY);
-    $splitter->SplitVertically($win1, $win2);
-    
+
     # Parse the file
     # Try to open and read
     my $dummy = $/;
@@ -59,39 +83,50 @@ sub new {
     # Get only the extension in uppercase
     $title =~ s/.*\.(.*)/\U$1\E/;
     if ($title eq "RDB") {
-        my $temp = parser::parseRDB($fileText);
-        if ($temp == 0) {
+        my @temp = parser::parseRDB($fileText);
+        if (@temp == 0) {
             croak "Error parsing RDB file";
         } else {
-            %relation = %{$temp};
+            %relation = %{$temp[0][0]};
+            %attribs = %{$temp[0][1]};
         }
     }
-    
+
     my $nRows = scalar keys(%relation);
-    
+
     my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
     my $grid = Wx::Grid->new($win1, $ID_RELATION_GRID);
     $grid->CreateGrid( $nRows, 2 );
-    
+
     my $counter = 0;
     while(my ($key, $value) = each(%relation)) {
         $grid->SetCellValue($counter, 0, $key);
         $grid->SetCellValue($counter++, 1, scalar @{$value});
     }
-    
+
     EVT_GRID_CMD_SELECT_CELL($self, $ID_RELATION_GRID, \&onRelationSelect);
 
     $grid->SetColLabelValue(0, "Relation Name");
     $grid->SetColLabelValue(1, "# Tuples");
-    
+
     $sizer->Add($grid, 1, wxEXPAND);
     # Get rid of border
     $grid->SetCellHighlightPenWidth(0);
     $grid->SetSelectionMode(wxGridSelectRows);
     $grid->EnableEditing(0);
     $grid->AutoSize();
-    
+    $grid->SetRowLabelSize(40);
+
     $win1->SetSizer($sizer);
+
+    $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
+    $win2->SetSizer($sizer);
+
+    $splitter->SplitVertically($win1, $win2, $grid->GetSize()->GetWidth());
+    $win1->GetSizer()->Layout();
+
+    # Restart redrawing
+    $self->Thaw();
 }
 
 package RDBTeachApp;
@@ -122,7 +157,7 @@ sub onFileExit {
 
 sub onOpen {
     my ($self, $event) = @_;
-    
+
     my $file = Wx::FileSelector("Select file to open", ".", "", "", "WinRDBI files (*.rdb, *.alg)|*.rdb;*.alg|RDB Database (*.rdb)|*.rdb|Relational Algebra files (*.alg)|*.alg");
     if ($file) {
         my $newChild = GridWindow->new($frame, wxID_ANY, $file);
