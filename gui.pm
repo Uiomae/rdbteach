@@ -17,20 +17,71 @@ use Wx::Perl::Carp;
 use parser;
 
 use Wx::Event qw(EVT_GRID_CMD_SELECT_CELL);
+use Wx::Event qw(EVT_STC_STYLENEEDED);
 
 # General constants
 use Wx qw(wxID_ANY wxPOINT wxSIZE);
+use Wx qw(wxRED wxGREEN wxBLUE);
 # Sizer constants
 use Wx qw(wxVERTICAL wxHORIZONTAL wxALL wxEXPAND);
 # Grid constants
 use Wx qw(wxGridSelectRows);
 # StyledTextCtrl constants
-use Wx qw(wxSTC_STYLE_DEFAULT);
+use Wx qw(wxSTC_STYLE_DEFAULT wxSTC_LEX_CONTAINER);
+use Wx qw(wxSTC_INDICS_MASK wxSTC_INDIC0_MASK wxSTC_INDIC1_MASK wxSTC_INDIC2_MASK);
 
 my $ID_RELATION_GRID = 10;
 my $ID_CODE_EDITOR = 11;
 
+use constant STYLE_COMMENT => 1;
+
 use base 'Wx::MDIChildFrame';
+
+sub onStyleNeeded {
+    my ($self, $event) = @_;
+    my $insideAnything = 0;
+
+    my $codeEditor = ${$self->{codeEditor}};
+    my $start = $codeEditor->GetEndStyled();    # this is the first character that needs styling
+    my $end = $event->GetPosition();          # this is the last character that needs styling
+    my $pos = $start;
+
+    $codeEditor->StartStyling($start, 31);   # Style text
+    while ($pos < $end) {
+        # Iterate over lines
+        my $lineNum = $codeEditor->LineFromPosition($pos);
+        my $lineLast = $codeEditor->GetLineEndPosition($lineNum);
+        while ($pos < $lineLast) {
+            while (($pos < $lineLast) && ($codeEditor->GetCharAt($pos) == 32)) {
+                $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+                $pos++;
+            }
+            my $currChar = $codeEditor->GetCharAt($pos);
+            # 0x25 == '%'
+            if (($currChar == 0x25) && (not $insideAnything)) {
+                $codeEditor->SetStyling($lineLast - $pos, STYLE_COMMENT);
+                $pos = $lineLast;
+            } else {
+                my $pos2 = $pos + 1;
+                while (($pos2 < $lineLast) && ($codeEditor->GetCharAt($pos2) != 32)) {
+                    $pos2++;
+                }
+                my $word = $codeEditor->GetTextRange($pos, $pos2);
+                print "Word '$word'\n";
+                # Search in the list of keywords
+                # ...
+                # Not in the list of keywords, style as normal (INCLUDING space)
+                $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                $pos = $pos2;
+            }
+        }
+        # Skip endline
+        while ($lineNum == $codeEditor->LineFromPosition($pos)) {
+            $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+            $pos++;
+        }
+    }
+}
 
 sub onRelationSelect {
     my ($self, $event) = @_;
@@ -105,7 +156,11 @@ sub new {
     my $codeEditor = Wx::StyledTextCtrl->new($mainWin1, $ID_CODE_EDITOR);
     $self->{codeEditor} = \$codeEditor;
 
+    $codeEditor->SetLexer(wxSTC_LEX_CONTAINER);
+    EVT_STC_STYLENEEDED($self, $ID_CODE_EDITOR, \&onStyleNeeded);
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
+    $codeEditor->StyleSetForeground(STYLE_COMMENT, wxGREEN);
+    # End creating styled code editor
 
     $mainSizer->Add($codeEditor, 1, wxEXPAND);
     $mainWin1->Layout();
