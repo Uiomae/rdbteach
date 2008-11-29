@@ -396,6 +396,8 @@ my $ID_FILE_NEWDB = 2;
 my $ID_FILE_NEWQUERY = 3;
 my $ID_FILE_EXIT = 4;
 
+my $ID_CODE_EXECUTE = 5;
+
 my $frame;
 
 # TODO: Replace that with an override of wxApp::OnExit
@@ -432,6 +434,7 @@ sub OnInit {
     my $iconOpen = Wx::Bitmap->new("icons/folder.png", wxBITMAP_TYPE_PNG);
     my $iconNewDB = Wx::Bitmap->new("icons/database_lightning.png", wxBITMAP_TYPE_PNG);
     my $iconNewQuery = Wx::Bitmap->new("icons/script_lightning.png", wxBITMAP_TYPE_PNG);
+    my $iconExecute = Wx::Bitmap->new("icons/flag_green.png", wxBITMAP_TYPE_PNG);
     # End loading images
 
     # Creates the menu
@@ -471,6 +474,8 @@ sub OnInit {
     $toolBar->AddSeparator();
     $toolBar->AddTool($ID_FILE_NEWDB, "New Database", $iconNewDB);
     $toolBar->AddTool($ID_FILE_NEWQUERY, "New Query", $iconNewQuery);
+    $toolBar->AddSeparator();
+    $toolBar->AddTool($ID_CODE_EXECUTE, "Execute", $iconExecute);
     $toolBar->Realize();
     # End creating the toolbar
 
