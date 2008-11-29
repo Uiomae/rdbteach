@@ -37,6 +37,7 @@ use constant STYLE_COMMENT => 1;
 use constant STYLE_KEYWORD => 2;
 use constant STYLE_OPERAND => 3;
 use constant STYLE_STRING  => 4;
+use constant STYLE_NUMBER  => 5;
 
 use constant CHAR_LF => 0x0A;
 use constant CHAR_CR => 0x0D;
@@ -102,6 +103,27 @@ sub onStyleNeeded {
                 $pos++;
                 next;
             }
+            if (($currChar >= 0x30) && ($currChar <= 0x39)) {
+                print "Number $currChar\n";
+                my $pos2 = $pos + 1;
+                $lastChar = $codeEditor->GetCharAt($pos2);
+                while (($pos2 < $lineLast) && ($lastChar >= 0x30) && ($lastChar <= 0x39) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)
+                        && ($lastChar != CHAR_PAREN_OPEN) && ($lastChar != CHAR_PAREN_CLOSE)) {
+                    $pos2++;
+                    $lastChar = $codeEditor->GetCharAt($pos2);
+                }
+                $lastChar = $codeEditor->GetCharAt($pos2 - 1);
+                my $nextChar = $codeEditor->GetCharAt($pos2);
+                print "Last : $lastChar Next: $nextChar\n";
+                if (($lastChar >= 0x30) && ($lastChar <= 0x39) && (($nextChar == CHAR_SPACE) || ($nextChar == CHAR_CR) || ($nextChar == CHAR_LF)
+                        || ($nextChar == CHAR_PAREN_OPEN) || ($nextChar == CHAR_PAREN_CLOSE))) {
+                    $codeEditor->SetStyling($pos2 - $pos, STYLE_NUMBER);
+                    # Style space
+                    $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+                    $pos = ++$pos2;
+                    next;
+                }
+            }
             if (($currChar == CHAR_PERCENT) && (not $insideAnything)) {
                 $codeEditor->SetStyling($lineLast - $pos, STYLE_COMMENT);
                 $pos = $lineLast;
@@ -120,7 +142,8 @@ sub onStyleNeeded {
                 } else {
                     my $pos2 = $pos + 1;
                     $lastChar = $codeEditor->GetCharAt($pos2);
-                    while (($pos2 < $lineLast) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)) {
+                    while (($pos2 < $lineLast) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)
+                            && ($lastChar != CHAR_PAREN_OPEN) && ($lastChar != CHAR_PAREN_CLOSE)) {
                         $pos2++;
                         $lastChar = $codeEditor->GetCharAt($pos2);
                     }
@@ -157,7 +180,6 @@ sub onStyleNeeded {
             $pos++;
         }
     }
-    print "Start $start and end $end\n";
 }
 
 sub onRelationSelect {
@@ -238,11 +260,12 @@ sub new {
 
     # Styles
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
-    $codeEditor->StyleSetForeground(STYLE_COMMENT, wxGREEN);
+    $codeEditor->StyleSetForeground(STYLE_COMMENT, Wx::Colour->new(0x40, 0x80, 0x80));
     $codeEditor->StyleSetFontAttr(STYLE_KEYWORD, 10, "Courier New", 1, 0, 0);
     $codeEditor->StyleSetFontAttr(STYLE_OPERAND, 10, "Courier New", 1, 0, 0);
     $codeEditor->StyleSetForeground(STYLE_OPERAND, Wx::Colour->new(0x80, 0x50, 0x50));
     $codeEditor->StyleSetForeground(STYLE_STRING, Wx::Colour->new(0, 128, 192));
+    $codeEditor->StyleSetForeground(STYLE_NUMBER, Wx::Colour->new(0x80, 0x00, 0xFF));
     # End of styles
     # End creating styled code editor
 
