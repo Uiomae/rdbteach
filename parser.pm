@@ -21,7 +21,8 @@ sub checkAssignment {
     my $queryResult = $_[-1];
 
     #print "RelationName: $relationName QueryResult: " . Dumper($queryResult);
-    $relation{$relationName} = $queryResult;
+    $relation{$relationName} = @{$queryResult}[0];
+    $attribs{$relationName} = @{$queryResult}[1];
 }
 
 my $generalGrammar = q(
@@ -57,22 +58,26 @@ sub parseProject {
     # print "Attr: " . Dumper($attributes) . "\nExpr: " . Dumper($expression) . "\n";
 
     # Check attributes
+    my %tempAttribs;
+
+    my %currentAttribs = %{$attribs{$expression}};
+    @tempAttribs{@{$attributes}} = @currentAttribs{@{$attributes}};
 
     # Do the actual projection
-    my @temp;
+    my @tempRelation;
     foreach my $tempHash (@{$relation{$expression}}) {
         my %anotherHash;
         # Slice and recombine into a hash
         @anotherHash{@{$attributes}} = @{$tempHash}{@{$attributes}};
         my $found = 0;
-        foreach my $tempAnother (@temp) {
+        foreach my $tempAnother (@tempRelation) {
             if (Compare($tempAnother, {%anotherHash})) { $found = 1; last; }
         }
-        push(@temp, {%anotherHash}) unless $found;
+        push(@tempRelation, {%anotherHash}) unless $found;
     }
 
     #print "Temp: " . Dumper(@temp);
-    return \@temp;
+    return [\@tempRelation, \%tempAttribs];
 }
 
 my $algGrammar = $generalGrammar . q(
@@ -171,10 +176,15 @@ sub parseRDB {
 }
 
 sub parseALG {
-    my ($algText) = @_;
-    my $validALG = $algParser->startrule($algText);
-    print "Valid ALG FILE\n" if $validALG;
-    print "Invalid ALG FILE\n" unless $validALG;
+    my ($algText, $DBRelation, $DBAttribs) = @_;
+    # Make a copy of the passed values
+    %relation = %{$DBRelation};
+    %attribs = %{$DBAttribs};
+    my $valid = $algParser->startrule($algText);
+    my %newRel = %relation;
+    my %newAttribs = %attribs;
+    return [\%newRel, \%newAttribs] if $valid;
+    return 0 unless $valid;
 }
 
 package main;

@@ -83,6 +83,67 @@ use constant CHAR_PAREN_CLOSE => 0x29;
 
 use base 'Wx::MDIChildFrame';
 
+sub fillRelation {
+    my $self = shift;
+    my $splitter = ${$self->{splitter}};
+    my %relation = %{$self->{relation}};
+
+    my $win1 = $splitter->GetWindow1();
+    my $nRows = scalar keys(%relation);
+
+    # Stop redrawing
+    $win1->Freeze();
+    # Destroy existing grid if any
+    $win1->DestroyChildren();
+
+    # Add a new grid
+    my $grid = Wx::Grid->new($win1, ID_RELATION_GRID);
+
+    $grid->CreateGrid($nRows, 2);
+
+    # Fill relation grid
+    my $counter = 0;
+    while(my ($key, $value) = each(%relation)) {
+        $grid->SetCellValue($counter, 0, $key);
+        $grid->SetCellValue($counter++, 1, scalar @{$value});
+    }
+
+    $grid->SetColLabelValue(0, "Relation Name");
+    $grid->SetColLabelValue(1, "# Tuples");
+
+    # Get rid of border
+    $grid->SetCellHighlightPenWidth(0);
+    $grid->SetSelectionMode(wxGridSelectRows);
+    $grid->EnableEditing(0);
+    $grid->AutoSize();
+    $grid->SetRowLabelSize(40);
+
+    $win1->GetSizer()->Add($grid, 1, wxEXPAND);
+    my $width = $grid->GetSize()->GetWidth();
+    $win1->GetSizer()->Layout();
+
+    $splitter->SetSashPosition($width);
+
+    # Restart redrawing
+    $win1->Thaw();
+
+    return $grid;
+}
+
+sub parse {
+    my $self = $_[0];
+    my $DBRelation = $_[1];
+    my $DBAttribs = $_[2];
+    my $codeEditor = ${$self->{codeEditor}};
+    my @result = &{$self->{parser}}($codeEditor->GetText(), $DBRelation, $DBAttribs);
+    if (@result != 0) {
+        $self->{relation} = $result[0][0];
+        $self->{attribs} = $result[0][1];
+
+        $self->fillRelation();
+    }
+}
+
 =begin nd
     Function:
         This function is called everytime an EVT_STC_STYLENEEDED event is fired.
@@ -163,7 +224,6 @@ sub onStyleNeeded {
                 next;
             }
             if (($currChar >= 0x30) && ($currChar <= 0x39)) {
-                print "Number $currChar\n";
                 my $pos2 = $pos + 1;
                 $lastChar = $codeEditor->GetCharAt($pos2);
                 while (($pos2 < $lineLast) && ($lastChar >= 0x30) && ($lastChar <= 0x39) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)
@@ -173,7 +233,7 @@ sub onStyleNeeded {
                 }
                 $lastChar = $codeEditor->GetCharAt($pos2 - 1);
                 my $nextChar = $codeEditor->GetCharAt($pos2);
-                print "Last : $lastChar Next: $nextChar\n";
+
                 if (($lastChar >= 0x30) && ($lastChar <= 0x39) && (($nextChar == CHAR_SPACE) || ($nextChar == CHAR_CR) || ($nextChar == CHAR_LF)
                         || ($nextChar == CHAR_PAREN_OPEN) || ($nextChar == CHAR_PAREN_CLOSE))) {
                     $codeEditor->SetStyling($pos2 - $pos, STYLE_NUMBER);
@@ -192,7 +252,7 @@ sub onStyleNeeded {
                     while (($pos2 < $endText) && ($codeEditor->GetCharAt($pos2) != CHAR_SINGLEQUOTE)) {
                         $pos2++;
                     }
-                    print "String at $pos2\n";
+
                     $pos2++;
                     $codeEditor->SetStyling($pos2 - $pos, STYLE_STRING);
                     # Style space
@@ -207,7 +267,7 @@ sub onStyleNeeded {
                         $lastChar = $codeEditor->GetCharAt($pos2);
                     }
                     my $word = $codeEditor->GetTextRange($pos, $pos2);
-                    print "Word '$word'\n";
+
                     # Search in the list of keywords
                     if ( grep {$_ eq $word} @keywords ) {
                         # In the list of keywords, style as keyword
@@ -418,6 +478,7 @@ sub new {
             my @operands = qw(union njoin product difference intersect);
             $self->{keywords} = \@keywords;
             $self->{operands} = \@operands;
+            $self->{parser} = \&parser::parseALG;
             %relation = ();
             %attribs = ();
         } else {
@@ -425,38 +486,19 @@ sub new {
         }
     }
 
-    my $nRows = scalar keys(%relation);
 
     my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
-    my $grid = Wx::Grid->new($win1, ID_RELATION_GRID);
-    $grid->CreateGrid( $nRows, 2 );
-
-    my $counter = 0;
-    while(my ($key, $value) = each(%relation)) {
-        $grid->SetCellValue($counter, 0, $key);
-        $grid->SetCellValue($counter++, 1, scalar @{$value});
-    }
 
     EVT_GRID_CMD_SELECT_CELL($self, ID_RELATION_GRID, \&onRelationSelect);
-
-    $grid->SetColLabelValue(0, "Relation Name");
-    $grid->SetColLabelValue(1, "# Tuples");
-
-    $sizer->Add($grid, 1, wxEXPAND);
-    # Get rid of border
-    $grid->SetCellHighlightPenWidth(0);
-    $grid->SetSelectionMode(wxGridSelectRows);
-    $grid->EnableEditing(0);
-    $grid->AutoSize();
-    $grid->SetRowLabelSize(40);
 
     $win1->SetSizer($sizer);
 
     $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
     $win2->SetSizer($sizer);
 
-    $splitter->SplitVertically($win1, $win2, $grid->GetSize()->GetWidth());
-    $win1->GetSizer()->Layout();
+    #, $grid->GetSize()->GetWidth()
+    $splitter->SplitVertically($win1, $win2);
+    $self->fillRelation();
 
     # Restart redrawing
     $self->Thaw();
@@ -464,9 +506,13 @@ sub new {
 }
 
 package RDBTeachApp;
+use strict;
+use warnings;
+use Wx::Perl::Carp;
+use parser;
 
 use base 'Wx::App';
-use Wx::Event qw(EVT_BUTTON EVT_MENU);
+use Wx::Event qw(EVT_BUTTON EVT_MENU EVT_TOOL);
 
 use Wx qw(wxSIZE);
 
@@ -505,10 +551,20 @@ sub onOpen {
         if ($newChild->isDB()) {
             # TODO: Check if this relation is still valid at every execution (we can close the database)
             $self->{DBRelation} = $newChild->{relation};
+            $self->{DBAttribs} = $newChild->{attribs};
         }
     }
 }
 
+sub onExecute {
+    my ($self, $event) = @_;
+
+    my $frame = ${$self->{frame}};
+    my $child = $frame->GetActiveChild();
+    if ($child) {
+        $child->parse($self->{DBRelation}, $self->{DBAttribs});
+    }
+}
 =begin nd
     Function:
         This method is called automatically when an application object is
@@ -590,6 +646,8 @@ sub OnInit {
     $toolBar->AddTool(ID_CODE_EXECUTE, "Execute", $iconExecute);
     $toolBar->Realize();
     # End creating the toolbar
+
+    EVT_TOOL($self, ID_CODE_EXECUTE, \&onExecute);
 
     # Creates the statusbar
     my $statusBar = $frame->CreateStatusBar();
