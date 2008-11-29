@@ -62,7 +62,8 @@ sub onStyleNeeded {
     my $pos = $start;
 
     $codeEditor->StartStyling($start, 31);   # Style text
-    if ($codeEditor->GetStyleAt($start - 1) == STYLE_COMMENT) {
+    my $tempStyle = $codeEditor->GetStyleAt($start - 1);
+    if ($tempStyle == STYLE_COMMENT) {
         my $lineNum = $codeEditor->LineFromPosition($start);
         my $lineLast = $codeEditor->GetLineEndPosition($lineNum);
         $codeEditor->SetStyling($lineLast - $start, STYLE_COMMENT);
@@ -71,6 +72,18 @@ sub onStyleNeeded {
         while ($lineNum == $codeEditor->LineFromPosition($pos)) {
             $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
             $pos++;
+        }
+    } else {
+        if (($tempStyle == STYLE_STRING) && ($codeEditor->GetCharAt($start - 1) != CHAR_SINGLEQUOTE)) {
+            # Inside a string
+            my $pos2 = $start - 1;
+            while (($pos2 < $endText) && ($codeEditor->GetCharAt($pos2) != CHAR_SINGLEQUOTE)) {
+                $pos2++;
+            }
+            $pos2++;
+            $codeEditor->SetStyling($pos2 - $pos, STYLE_STRING);
+            $codeEditor->SetStyling(1, STYLE_STRING);
+            $pos = ++$pos2;
         }
     }
     while ($pos < $end) {
