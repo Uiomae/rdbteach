@@ -43,6 +43,8 @@ use constant CHAR_CR => 0x0D;
 use constant CHAR_SPACE => 0x20;
 use constant CHAR_PERCENT => 0x25;
 use constant CHAR_SINGLEQUOTE => 0x27;
+use constant CHAR_PAREN_OPEN => 0x28;
+use constant CHAR_PAREN_CLOSE => 0x29;
 
 use base 'Wx::MDIChildFrame';
 
@@ -80,19 +82,26 @@ sub onStyleNeeded {
         while ($pos < $lineLast) {
             my $entered = 0;
             my $lastChar = $codeEditor->GetCharAt($pos - 1);
-            while ((($pos - 1) > 0) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)) {
+            while ((($pos - 1) > 0) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)
+                   && ($lastChar != CHAR_PAREN_OPEN) && ($lastChar != CHAR_PAREN_CLOSE)) {
                 $entered = 1;
                 $pos--;
                 $lastChar = $codeEditor->GetCharAt($pos - 1);
             }
             $codeEditor->StartStyling($pos, 31) if ($entered);
-
-            while (($pos < $lineLast) && ($codeEditor->GetCharAt($pos) == CHAR_SPACE)) {
+            $lastChar = $codeEditor->GetCharAt($pos);
+            while (($pos < $lineLast) && ($lastChar == CHAR_SPACE)
+                   && ($lastChar != CHAR_PAREN_OPEN) && ($lastChar != CHAR_PAREN_CLOSE)) {
                 $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
                 $pos++;
+                $lastChar = $codeEditor->GetCharAt($pos);
             }
             my $currChar = $codeEditor->GetCharAt($pos);
-
+            if ($currChar == CHAR_PAREN_OPEN || $currChar == CHAR_PAREN_CLOSE) {
+                $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+                $pos++;
+                next;
+            }
             if (($currChar == CHAR_PERCENT) && (not $insideAnything)) {
                 $codeEditor->SetStyling($lineLast - $pos, STYLE_COMMENT);
                 $pos = $lineLast;
