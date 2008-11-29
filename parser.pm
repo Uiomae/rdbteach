@@ -1,4 +1,7 @@
 package parser;
+
+$main::RD_HINT = 1;
+
 use strict;
 use warnings;
 use Parse::RecDescent;
@@ -25,13 +28,19 @@ sub checkAssignment {
     $attribs{$relationName} = @{$queryResult}[1];
 }
 
+sub errorCheck {
+    my $msg = $_[0];
+    my $item = $_[1];
+    print @{$msg}[0] . ":" . $item . "\n";
+}
+
 my $generalGrammar = q(
     startrule : query_definition(s?) eofile | <error>
 
     eofile : /^\\Z/ { $return = 1; }
 
     comment : /^%+(.*?)$/m
-    identifier : /[a-zA-Z][a-zA-Z0-9]*/m
+    identifier : /[a-zA-Z][a-zA-Z0-9]*/m | <error>
 
     # Types
     # TODO: Add double quotes to "char" type
@@ -42,12 +51,12 @@ my $generalGrammar = q(
 
     constant : char | numeric
 
-    query_definition : comment | assignment_statement ';' | query ';'
+    query_definition : comment | assignment_statement ';' | query ';' | <error>
 
-    assignment_statement : relation_name '(' attribute_list(s /,/) ')' ':=' query | relation_name ':=' query { parser::checkAssignment(@item); }
+    assignment_statement : relation_name '(' attribute_list(s /,/) ')' ':=' query { parser::checkAssignment(@item); } | relation_name ':=' query { parser::checkAssignment(@item); } | <error>
 
-    attribute_list : identifier
-    relation_name : identifier
+    attribute_list : identifier | <error>
+    relation_name : identifier | <error>
 );
 
 sub parseProject {
@@ -184,10 +193,7 @@ sub parseALG {
     my %newRel = %relation;
     my %newAttribs = %attribs;
     return [\%newRel, \%newAttribs] if $valid;
-    return 0 unless $valid;
+    return [0] unless $valid;
 }
-
-package main;
-$RD_HINT = 1;
 
 1;

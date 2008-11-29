@@ -136,7 +136,7 @@ sub parse {
     my $DBAttribs = $_[2];
     my $codeEditor = ${$self->{codeEditor}};
     my @result = &{$self->{parser}}($codeEditor->GetText(), $DBRelation, $DBAttribs);
-    if (@result != 0) {
+    if ($result[0][0] != 0) {
         $self->{relation} = $result[0][0];
         $self->{attribs} = $result[0][1];
 
