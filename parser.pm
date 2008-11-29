@@ -62,19 +62,20 @@ my $generalGrammar = q(
 sub parseProject {
     shift;
     my $attributes = $_[1];
-    my $expression = $_[3];
-
-    # print "Attr: " . Dumper($attributes) . "\nExpr: " . Dumper($expression) . "\n";
+    my @expression = @{$_[3]};
 
     # Check attributes
     my %tempAttribs;
 
-    my %currentAttribs = %{$attribs{$expression}};
+    my $ref = $expression[1];
+    my %currentAttribs = %$ref;
     @tempAttribs{@{$attributes}} = @currentAttribs{@{$attributes}};
 
     # Do the actual projection
     my @tempRelation;
-    foreach my $tempHash (@{$relation{$expression}}) {
+    $ref = $expression[0];
+    my @currentRelation = @$ref;
+    foreach my $tempHash (@currentRelation) {
         my %anotherHash;
         # Slice and recombine into a hash
         @anotherHash{@{$attributes}} = @{$tempHash}{@{$attributes}};
@@ -89,10 +90,16 @@ sub parseProject {
     return [\@tempRelation, \%tempAttribs];
 }
 
+sub parseIdentifier {
+    shift;
+    my $itemName = $_[0];
+    return [$relation{$itemName}, $attribs{$itemName}];
+}
+
 my $algGrammar = $generalGrammar . q(
     query : expression
 
-    liteExpression : '(' expression ')' | identifier
+    liteExpression : '(' expression ')' | identifier { $return = parser::parseIdentifier(@item); }
     expression : select_expr | project_expr | binary_expr | liteExpression
     select_expr : 'select' condition '(' expression ')'
     project_expr : 'project' attribute(s /,/) '(' expression ')' { $return = parser::parseProject(@item); }
