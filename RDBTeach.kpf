@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Komodo Project File - DO NOT EDIT -->
 <project id="f0e2d171-a6af-475c-bc61-dcf8aeedf212" kpf_version="4" name="RDBTeach.kpf">
+<command cwd="%p" doNotOpenOutputWindow="0" env="" id="798ebd6e-d589-423f-b8a7-1e6de04da64a" idref="f0e2d171-a6af-475c-bc61-dcf8aeedf212" insertOutput="0" keyboard_shortcut="Ctrl+1" name="Run!" operateOnSelection="0" parseOutput="0" parseRegex="" runIn="command-output-window" showParsedOutputList="0">
+%(perl) %D\main.pl</command>
+<command cwd="C:\NaturalDocs" doNotOpenOutputWindow="0" env="" id="bfb87886-5bec-4bdd-a277-7f9f1ba538f0" idref="f0e2d171-a6af-475c-bc61-dcf8aeedf212" insertOutput="0" keyboard_shortcut="Ctrl+D" name="Make Documentation" operateOnSelection="0" parseOutput="0" parseRegex="" runIn="command-output-window" showParsedOutputList="0">
+C:\NaturalDocs\NaturalDocs.bat -i %p -o HTML %p\doc -p %p\natDoc -img %p\icons</command>
 <preference-set idref="f0e2d171-a6af-475c-bc61-dcf8aeedf212">
-  <string id="import_exclude_matches">*.*~;*.bak;*.tmp;CVS;.#*;*.pyo;*.pyc;.svn;_svn;*%*;tmp*.html;.DS_Store;.git</string>
+  <string id="import_exclude_matches">*.*~;*.bak;*.tmp;CVS;.#*;*.pyo;*.pyc;.svn;_svn;*%*;tmp*.html;.DS_Store;.git;doc;natDoc</string>
   <string id="import_include_matches"></string>
   <boolean id="import_live">1</boolean>
   <boolean id="import_recursive">1</boolean>

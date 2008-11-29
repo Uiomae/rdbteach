@@ -5,10 +5,6 @@ use Parse::RecDescent;
 use Data::Dumper;
 use Data::Compare;
 
-package main;
-$RD_HINT = 1;
-
-package parser;
 require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(parseRDB parseALG);
@@ -180,5 +176,8 @@ sub parseALG {
     print "Valid ALG FILE\n" if $validALG;
     print "Invalid ALG FILE\n" unless $validALG;
 }
+
+package main;
+$RD_HINT = 1;
 
 1;

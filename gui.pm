@@ -9,8 +9,19 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(initGUI);
 
-package GridWindow;
+sub initGUI {
+    # Init image handlers
+    Wx::InitAllImageHandlers();
+    # create the application object, this will call OnInit
+    my $app = RDBTeachApp->new;
+    # process GUI events from the application this function will not
+    # return until the last frame is closed
+    $app->MainLoop;
+}
 
+package GridWindow;
+use strict;
+use warnings;
 use Wx::Grid;
 use Wx::STC;
 use Wx::Perl::Carp;
@@ -30,15 +41,38 @@ use Wx qw(wxGridSelectRows);
 use Wx qw(wxSTC_STYLE_DEFAULT wxSTC_LEX_CONTAINER);
 use Wx qw(wxSTC_INDICS_MASK wxSTC_INDIC0_MASK wxSTC_INDIC1_MASK wxSTC_INDIC2_MASK);
 
-my $ID_RELATION_GRID = 10;
-my $ID_CODE_EDITOR = 11;
+=begin nd
+    Constants: IDs
+        ID_RELATION_GRID - ID assigned to the grid for the relations
+        ID_CODE_EDITOR - ID assigned to the Scintilla code editor
+=cut
+use constant ID_RELATION_GRID => 10;
+use constant ID_CODE_EDITOR => 11;
 
+=begin nd
+    Constants: Styles
+        STYLE_COMMENT - Scintilla style used on the code comments
+        STYLE_KEYWORD - Scintilla style used on the code keywords
+        STYLE_OPERAND - Scintilla style used on the code operands
+        STYLE_STRING  - Scintilla style used on the code strings (enclosed by single quotes)
+        STYLE_NUMBER  - Scintilla style used on the code numbers
+=cut
 use constant STYLE_COMMENT => 1;
 use constant STYLE_KEYWORD => 2;
 use constant STYLE_OPERAND => 3;
 use constant STYLE_STRING  => 4;
 use constant STYLE_NUMBER  => 5;
 
+=begin nd
+    Constants: Characters
+        CHAR_LF - Line feed ASCII code
+        CHAR_CR - Carriage return ASCII code
+        CHAR_SPACE - Space ASCII code
+        CHAR_PERCENT - Percent sign [%] ASCII code
+        CHAR_SINGLEQUOTE - Single quote ['] ASCII code
+        CHAR_PAREN_OPEN - Open parenthesis [(] ASCII code
+        CHAR_PAREN_CLOSE - Closed parenthesis [)] ASCII code
+=cut
 use constant CHAR_LF => 0x0A;
 use constant CHAR_CR => 0x0D;
 use constant CHAR_SPACE => 0x20;
@@ -49,6 +83,18 @@ use constant CHAR_PAREN_CLOSE => 0x29;
 
 use base 'Wx::MDIChildFrame';
 
+=begin nd
+    Function: onStyleNeeded
+        This function is called everytime an EVT_STC_STYLENEEDED event is fired.
+        That happens when the user load or modify the code in the Scintilla editor.
+
+    Parameters:
+        $self - Object owner
+        $event - Event information
+
+    Returns:
+        Nothing
+=cut
 sub onStyleNeeded {
     my ($self, $event) = @_;
     my $insideAnything = 0;
@@ -195,6 +241,18 @@ sub onStyleNeeded {
     }
 }
 
+=begin nd
+    Function: onRelationSelect
+        This function is called everytime an EVT_GRID_CMD_SELECT_CELL event is fired.
+        That happens when the user selects any row in the relations grid.
+
+    Parameters:
+        $self - Object owner
+        $event - Event information
+
+    Returns:
+        Nothing
+=cut
 sub onRelationSelect {
     my ($self, $event) = @_;
     my $splitter = ${$self->{splitter}};
@@ -265,11 +323,11 @@ sub new {
     $mainWin1->SetSizer($mainSizer);
 
     # Create styled code editor
-    my $codeEditor = Wx::StyledTextCtrl->new($mainWin1, $ID_CODE_EDITOR);
+    my $codeEditor = Wx::StyledTextCtrl->new($mainWin1, ID_CODE_EDITOR);
     $self->{codeEditor} = \$codeEditor;
 
     $codeEditor->SetLexer(wxSTC_LEX_CONTAINER);
-    EVT_STC_STYLENEEDED($self, $ID_CODE_EDITOR, \&onStyleNeeded);
+    EVT_STC_STYLENEEDED($self, ID_CODE_EDITOR, \&onStyleNeeded);
 
     # Styles
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
@@ -341,7 +399,7 @@ sub new {
     my $nRows = scalar keys(%relation);
 
     my $sizer = Wx::BoxSizer->new(wxHORIZONTAL);
-    my $grid = Wx::Grid->new($win1, $ID_RELATION_GRID);
+    my $grid = Wx::Grid->new($win1, ID_RELATION_GRID);
     $grid->CreateGrid( $nRows, 2 );
 
     my $counter = 0;
@@ -350,7 +408,7 @@ sub new {
         $grid->SetCellValue($counter++, 1, scalar @{$value});
     }
 
-    EVT_GRID_CMD_SELECT_CELL($self, $ID_RELATION_GRID, \&onRelationSelect);
+    EVT_GRID_CMD_SELECT_CELL($self, ID_RELATION_GRID, \&onRelationSelect);
 
     $grid->SetColLabelValue(0, "Relation Name");
     $grid->SetColLabelValue(1, "# Tuples");
@@ -391,14 +449,12 @@ use Wx qw(wxBITMAP_TYPE_PNG);
 # Toolbar constants
 use Wx qw(wxTB_FLAT wxTB_HORIZONTAL);
 
-my $ID_FILE_OPEN = 1;
-my $ID_FILE_NEWDB = 2;
-my $ID_FILE_NEWQUERY = 3;
-my $ID_FILE_EXIT = 4;
+use constant ID_FILE_OPEN => 1;
+use constant ID_FILE_NEWDB => 2;
+use constant ID_FILE_NEWQUERY => 3;
+use constant ID_FILE_EXIT => 4;
 
-my $ID_CODE_EXECUTE = 5;
-
-my $frame;
+use constant ID_CODE_EXECUTE => 5;
 
 # TODO: Replace that with an override of wxApp::OnExit
 sub onFileExit {
@@ -414,23 +470,37 @@ sub onOpen {
 
     my $file = Wx::FileSelector("Select file to open", ".", "", "", "WinRDBI files (*.rdb, *.alg)|*.rdb;*.alg|RDB Database (*.rdb)|*.rdb|Relational Algebra files (*.alg)|*.alg");
     if ($file) {
+        my $frame = ${$self->{frame}};
         my $newChild = GridWindow->new($frame, wxID_ANY, $file);
     }
 }
 
-# this method is called automatically when an application object is
-# first constructed, all application-level initialization is done here
+# Function: OnInit
+# This method is called automatically when an application object is
+# first constructed, all application-level initialization is done here.
 sub OnInit {
     my $self = shift;
+
     # create a new frame (a frame is a top level window)
-    $frame = Wx::MDIParentFrame->new( undef,           # parent window
+
+    # Variable: $frame
+    # Stores the current MDI parent of all child windows
+    my $frame = Wx::MDIParentFrame->new( undef,           # parent window
                                 wxID_ANY,              # ID -1 means any
                                 'RDBTeach beta 1',  # title
                                 [-1, -1],         # default position
                                 [800, 600],       # size
                                );
-
+    $self->{frame} = \$frame;
     # Load images
+
+=begin nd
+    Variables: Icons
+        iconOpen - Icon used for the "Open" command (see folder.png)
+        iconNewDB - Icon used for the "New Database" command (see database_lightning.png)
+        iconNewQuery - Icon used for the "New Query" command (see script_lightning.png)
+        iconExecute - Icon used for the "Execute" command (see flag_green.png)
+=cut
     my $iconOpen = Wx::Bitmap->new("icons/folder.png", wxBITMAP_TYPE_PNG);
     my $iconNewDB = Wx::Bitmap->new("icons/database_lightning.png", wxBITMAP_TYPE_PNG);
     my $iconNewQuery = Wx::Bitmap->new("icons/script_lightning.png", wxBITMAP_TYPE_PNG);
@@ -442,12 +512,12 @@ sub OnInit {
 
     # File menu
     my $fileMenu = Wx::Menu->new();
-    $fileMenu->Append($ID_FILE_OPEN, "&Open");
+    $fileMenu->Append(ID_FILE_OPEN, "&Open");
     $fileMenu->AppendSeparator();
-    $fileMenu->Append($ID_FILE_NEWDB, "New &Database");
-    $fileMenu->Append($ID_FILE_NEWQUERY, "New &Query");
+    $fileMenu->Append(ID_FILE_NEWDB, "New &Database");
+    $fileMenu->Append(ID_FILE_NEWQUERY, "New &Query");
     $fileMenu->AppendSeparator();
-    $fileMenu->Append($ID_FILE_EXIT, "&Exit");
+    $fileMenu->Append(ID_FILE_EXIT, "&Exit");
 
     # Help menu
     my $helpMenu = Wx::Menu->new();
@@ -456,8 +526,8 @@ sub OnInit {
     $helpMenu->Append(wxID_ANY, "&About");
 
     # Events
-    EVT_MENU($self, $ID_FILE_EXIT, \&onFileExit);
-    EVT_MENU($self, $ID_FILE_OPEN, \&onOpen);
+    EVT_MENU($self, ID_FILE_EXIT, \&onFileExit);
+    EVT_MENU($self, ID_FILE_OPEN, \&onOpen);
 
     # Append all menus
     $menuBar->Append($fileMenu, "&File");
@@ -470,12 +540,12 @@ sub OnInit {
     my $toolBar = $frame->CreateToolBar(wxNO_BORDER | wxTB_FLAT | wxTB_HORIZONTAL);
     $toolBar->SetToolBitmapSize(wxSIZE(16, 16));
     # Using the same IDs as their menu counterparts make the events working for all of them!
-    $toolBar->AddTool($ID_FILE_OPEN, "Open", $iconOpen);
+    $toolBar->AddTool(ID_FILE_OPEN, "Open", $iconOpen);
     $toolBar->AddSeparator();
-    $toolBar->AddTool($ID_FILE_NEWDB, "New Database", $iconNewDB);
-    $toolBar->AddTool($ID_FILE_NEWQUERY, "New Query", $iconNewQuery);
+    $toolBar->AddTool(ID_FILE_NEWDB, "New Database", $iconNewDB);
+    $toolBar->AddTool(ID_FILE_NEWQUERY, "New Query", $iconNewQuery);
     $toolBar->AddSeparator();
-    $toolBar->AddTool($ID_CODE_EXECUTE, "Execute", $iconExecute);
+    $toolBar->AddTool(ID_CODE_EXECUTE, "Execute", $iconExecute);
     $toolBar->Realize();
     # End creating the toolbar
 
@@ -487,18 +557,6 @@ sub OnInit {
     $self->SetTopWindow($frame);
     # show the frame
     $frame->Show( 1 );
-}
-
-package gui;
-
-sub initGUI {
-    # Init image handlers
-    Wx::InitAllImageHandlers();
-    # create the application object, this will call OnInit
-    my $app = RDBTeachApp->new;
-    # process GUI events from the application this function will not
-    # return until the last frame is closed
-    $app->MainLoop;
 }
 
 1;
