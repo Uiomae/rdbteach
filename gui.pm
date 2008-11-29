@@ -35,6 +35,7 @@ my $ID_CODE_EDITOR = 11;
 
 use constant STYLE_COMMENT => 1;
 use constant STYLE_KEYWORD => 2;
+use constant STYLE_OPERAND => 3;
 
 use constant CHAR_LF => 0x0A;
 use constant CHAR_CR => 0x0D;
@@ -48,6 +49,7 @@ sub onStyleNeeded {
 
     my $codeEditor = ${$self->{codeEditor}};
     my @keywords = @{$self->{keywords}};
+    my @operands = @{$self->{operands}};
     my $start = $codeEditor->GetEndStyled();    # this is the first character that needs styling
     my $end = $event->GetPosition();          # this is the last character that needs styling
     my $pos = $start;
@@ -107,9 +109,18 @@ sub onStyleNeeded {
                     $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
                     $pos2++;
                 } else {
-                    # Not in the list of keywords, style as normal (INCLUDING space)
-                    $pos2++;
-                    $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                    # Search in the list of operands
+                    if ( grep {$_ eq $word} @operands ) {
+                        # In the list of operands, style as operand
+                        $codeEditor->SetStyling($pos2 - $pos, STYLE_OPERAND);
+                        # Style space
+                        $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+                        $pos2++;
+                    } else {
+                        # Not in the list of keywords or operands, style as normal (INCLUDING space)
+                        $pos2++;
+                        $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                    }
                 }
                 $pos = $pos2;
             }
@@ -201,6 +212,8 @@ sub new {
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
     $codeEditor->StyleSetForeground(STYLE_COMMENT, wxGREEN);
     $codeEditor->StyleSetFontAttr(STYLE_KEYWORD, 10, "Courier New", 1, 0, 0);
+    $codeEditor->StyleSetFontAttr(STYLE_OPERAND, 10, "Courier New", 1, 0, 0);
+    $codeEditor->StyleSetForeground(STYLE_OPERAND, Wx::Colour->new(0x80, 0x50, 0x50));
     # End creating styled code editor
 
     $mainSizer->Add($codeEditor, 1, wxEXPAND);
@@ -249,7 +262,9 @@ sub new {
         if ($title eq "ALG") {
             $codeEditor->SetText($fileText);
             my @keywords = qw(select project);
+            my @operands = qw(union njoin product difference intersect);
             $self->{keywords} = \@keywords;
+            $self->{operands} = \@operands;
             %relation = ();
             %attribs = ();
         } else {
