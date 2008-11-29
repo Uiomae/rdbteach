@@ -84,7 +84,7 @@ use constant CHAR_PAREN_CLOSE => 0x29;
 use base 'Wx::MDIChildFrame';
 
 =begin nd
-    Function: onStyleNeeded
+    Function:
         This function is called everytime an EVT_STC_STYLENEEDED event is fired.
         That happens when the user load or modify the code in the Scintilla editor.
 
@@ -242,7 +242,7 @@ sub onStyleNeeded {
 }
 
 =begin nd
-    Function: onRelationSelect
+    Function:
         This function is called everytime an EVT_GRID_CMD_SELECT_CELL event is fired.
         That happens when the user selects any row in the relations grid.
 
@@ -323,7 +323,7 @@ sub isDB {
     return $self->{_isDB};
 }
 =begin nd
-    Function: new
+    Function:
         This function is called to create a new GridWindow
 
     Parameters:
@@ -509,9 +509,17 @@ sub onOpen {
     }
 }
 
-# Function: OnInit
-# This method is called automatically when an application object is
-# first constructed, all application-level initialization is done here.
+=begin nd
+    Function:
+        This method is called automatically when an application object is
+        first constructed, all application-level initialization is done here.
+
+    Parameters:
+        $self - RDBTeachApp class
+
+    Returns:
+        Nothing
+=cut
 sub OnInit {
     my $self = shift;
 
