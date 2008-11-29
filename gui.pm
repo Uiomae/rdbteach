@@ -36,10 +36,13 @@ my $ID_CODE_EDITOR = 11;
 use constant STYLE_COMMENT => 1;
 use constant STYLE_KEYWORD => 2;
 use constant STYLE_OPERAND => 3;
+use constant STYLE_STRING  => 4;
 
 use constant CHAR_LF => 0x0A;
 use constant CHAR_CR => 0x0D;
 use constant CHAR_SPACE => 0x20;
+use constant CHAR_PERCENT => 0x25;
+use constant CHAR_SINGLEQUOTE => 0x27;
 
 use base 'Wx::MDIChildFrame';
 
@@ -52,6 +55,7 @@ sub onStyleNeeded {
     my @operands = @{$self->{operands}};
     my $start = $codeEditor->GetEndStyled();    # this is the first character that needs styling
     my $end = $event->GetPosition();          # this is the last character that needs styling
+    my $endText = $codeEditor->GetTextLength();
     my $pos = $start;
 
     $codeEditor->StartStyling($start, 31);   # Style text
@@ -88,41 +92,54 @@ sub onStyleNeeded {
                 $pos++;
             }
             my $currChar = $codeEditor->GetCharAt($pos);
-            # 0x25 == '%'
-            if (($currChar == 0x25) && (not $insideAnything)) {
+
+            if (($currChar == CHAR_PERCENT) && (not $insideAnything)) {
                 $codeEditor->SetStyling($lineLast - $pos, STYLE_COMMENT);
                 $pos = $lineLast;
             } else {
-                my $pos2 = $pos + 1;
-                $lastChar = $codeEditor->GetCharAt($pos2);
-                while (($pos2 < $lineLast) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)) {
+                if ($currChar == CHAR_SINGLEQUOTE) {
+                    my $pos2 = $pos + 1;
+                    while (($pos2 < $endText) && ($codeEditor->GetCharAt($pos2) != CHAR_SINGLEQUOTE)) {
+                        $pos2++;
+                    }
+                    print "String at $pos2\n";
                     $pos2++;
-                    $lastChar = $codeEditor->GetCharAt($pos2);
-                }
-                my $word = $codeEditor->GetTextRange($pos, $pos2);
-                print "Word '$word'\n";
-                # Search in the list of keywords
-                if ( grep {$_ eq $word} @keywords ) {
-                    # In the list of keywords, style as keyword
-                    $codeEditor->SetStyling($pos2 - $pos, STYLE_KEYWORD);
+                    $codeEditor->SetStyling($pos2 - $pos, STYLE_STRING);
                     # Style space
                     $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
-                    $pos2++;
+                    $pos = ++$pos2;
                 } else {
-                    # Search in the list of operands
-                    if ( grep {$_ eq $word} @operands ) {
-                        # In the list of operands, style as operand
-                        $codeEditor->SetStyling($pos2 - $pos, STYLE_OPERAND);
+                    my $pos2 = $pos + 1;
+                    $lastChar = $codeEditor->GetCharAt($pos2);
+                    while (($pos2 < $lineLast) && ($lastChar != CHAR_SPACE) && ($lastChar != CHAR_CR) && ($lastChar != CHAR_LF)) {
+                        $pos2++;
+                        $lastChar = $codeEditor->GetCharAt($pos2);
+                    }
+                    my $word = $codeEditor->GetTextRange($pos, $pos2);
+                    print "Word '$word'\n";
+                    # Search in the list of keywords
+                    if ( grep {$_ eq $word} @keywords ) {
+                        # In the list of keywords, style as keyword
+                        $codeEditor->SetStyling($pos2 - $pos, STYLE_KEYWORD);
                         # Style space
                         $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
                         $pos2++;
                     } else {
-                        # Not in the list of keywords or operands, style as normal (INCLUDING space)
-                        $pos2++;
-                        $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                        # Search in the list of operands
+                        if ( grep {$_ eq $word} @operands ) {
+                            # In the list of operands, style as operand
+                            $codeEditor->SetStyling($pos2 - $pos, STYLE_OPERAND);
+                            # Style space
+                            $codeEditor->SetStyling(1, wxSTC_STYLE_DEFAULT);
+                            $pos2++;
+                        } else {
+                            # Not in the list of keywords or operands, style as normal (INCLUDING space)
+                            $pos2++;
+                            $codeEditor->SetStyling($pos2 - $pos, wxSTC_STYLE_DEFAULT);
+                        }
                     }
+                    $pos = $pos2;
                 }
-                $pos = $pos2;
             }
         }
         # Skip endline
@@ -209,11 +226,15 @@ sub new {
 
     $codeEditor->SetLexer(wxSTC_LEX_CONTAINER);
     EVT_STC_STYLENEEDED($self, $ID_CODE_EDITOR, \&onStyleNeeded);
+
+    # Styles
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
     $codeEditor->StyleSetForeground(STYLE_COMMENT, wxGREEN);
     $codeEditor->StyleSetFontAttr(STYLE_KEYWORD, 10, "Courier New", 1, 0, 0);
     $codeEditor->StyleSetFontAttr(STYLE_OPERAND, 10, "Courier New", 1, 0, 0);
     $codeEditor->StyleSetForeground(STYLE_OPERAND, Wx::Colour->new(0x80, 0x50, 0x50));
+    $codeEditor->StyleSetForeground(STYLE_STRING, Wx::Colour->new(0, 128, 192));
+    # End of styles
     # End creating styled code editor
 
     $mainSizer->Add($codeEditor, 1, wxEXPAND);
