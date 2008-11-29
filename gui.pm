@@ -307,6 +307,31 @@ sub onRelationSelect {
     $win2->Thaw();
 }
 
+=begin nd
+    Function:
+        This function indicates if an object stores a database (RDB)
+
+    Parameters:
+        $self - Object owner
+
+    Returns:
+        1 - if is a database
+        0 - if is not a database.
+=cut
+sub isDB {
+    my $self = shift;
+    return $self->{_isDB};
+}
+=begin nd
+    Function: new
+        This function is called to create a new GridWindow
+
+    Parameters:
+        $class - Object class (GridWindow)
+
+    Returns:
+        A reference to the new created object
+=cut
 sub new {
     my $class = shift;
 
@@ -372,17 +397,21 @@ sub new {
     $self->{relation} = \%relation;
     $self->{attribs}  = \%attribs;
     if ($title eq "RDB") {
+        # Hide code editor window
         $mainWin1->Show(0);
         $mainSplitter->Initialize($mainWin2);
         $mainWin2->Layout();
+
         my @temp = parser::parseRDB($fileText);
         if (@temp == 0) {
             croak "Error parsing RDB file";
         } else {
+            $self->{_isDB} = 1;
             %relation = %{$temp[0][0]};
             %attribs = %{$temp[0][1]};
         }
     } else {
+        $self->{_isDB} = 0;
         if ($title eq "ALG") {
             $codeEditor->SetText($fileText);
             my @keywords = qw(select project);
@@ -431,6 +460,7 @@ sub new {
 
     # Restart redrawing
     $self->Thaw();
+    return $self;
 }
 
 package RDBTeachApp;
@@ -472,6 +502,10 @@ sub onOpen {
     if ($file) {
         my $frame = ${$self->{frame}};
         my $newChild = GridWindow->new($frame, wxID_ANY, $file);
+        if ($newChild->isDB()) {
+            # TODO: Check if this relation is still valid at every execution (we can close the database)
+            $self->{DBRelation} = $newChild->{relation};
+        }
     }
 }
 
