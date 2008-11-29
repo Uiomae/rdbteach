@@ -49,7 +49,7 @@ my $generalGrammar = q(
     float : /[+-]?\\d+(?:\\.\\d+)?/
     numeric : float | int
 
-    constant : char | numeric
+    constant : char | numeric | <error>
 
     query_definition : comment | assignment_statement ';' | query ';' | <error>
 
@@ -61,8 +61,9 @@ my $generalGrammar = q(
 
 sub parseProject {
     shift;
-    my $attributes = $_[1];
-    my @expression = @{$_[3]};
+    print Dumper(@_);
+    my $attributes = $_[2];
+    my @expression = @{$_[4]};
 
     # Check attributes
     my %tempAttribs;
@@ -90,29 +91,31 @@ sub parseProject {
     return [\@tempRelation, \%tempAttribs];
 }
 
-sub parseIdentifier {
+sub parseLiteExpression {
     shift;
+    return $_[0] if (ref($_[0]) eq "ARRAY");
+
     my $itemName = $_[0];
     return [$relation{$itemName}, $attribs{$itemName}];
 }
 
 my $algGrammar = $generalGrammar . q(
-    query : expression
+    query : expression | <error>
 
-    liteExpression : '(' expression ')' | identifier { $return = parser::parseIdentifier(@item); }
-    expression : select_expr | project_expr | binary_expr | liteExpression
-    select_expr : 'select' condition '(' expression ')'
-    project_expr : 'project' attribute(s /,/) '(' expression ')' { $return = parser::parseProject(@item); }
-    binary_expr : liteExpression binary_op liteExpression
+    liteExpression : '(' expression ')' { $return = $item[2]; } | identifier | <error>
+    expression : select_expr | project_expr | binary_expr | liteExpression { $return = parser::parseLiteExpression(@item); } | <error>
+    select_expr : 'select' <commit> condition '(' expression ')' | <error>
+    project_expr : 'project' <commit> attribute(s /,/) '(' expression ')' { $return = parser::parseProject(@item); } | <error>
+    binary_expr : liteExpression binary_op liteExpression | <error>
 
-    condition : and_condition 'or' condition | and_condition
+    condition : and_condition 'or' condition | and_condition | <error>
     and_condition : rel_formula 'and' and_condition | rel_formula
     rel_formula : operand relational_op operand | '(' condition ')'
     binary_op : 'union' | 'njoin' | 'product' | 'difference' | 'intersect'
 
     # subAttribute : '.' identifier { $return = $item[2]; }
     attribute : identifier # subAttribute(?) { $return = [$item[1], $item[2]]; }
-    operand : attribute | constant
+    operand : attribute | constant | <error>
 
     relational_op : '=' | '>' | '<' | '<>' | '>=' | '<='
 );
@@ -200,6 +203,7 @@ sub parseALG {
     my %newRel = %relation;
     my %newAttribs = %attribs;
     return [\%newRel, \%newAttribs] if $valid;
+    print Dumper($algParser->{errors});
     return [0] unless $valid;
 }
 
