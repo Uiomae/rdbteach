@@ -61,7 +61,6 @@ my $generalGrammar = q(
 
 sub parseProject {
     shift;
-    print Dumper(@_);
     my $attributes = $_[2];
     my @expression = @{$_[4]};
 
@@ -203,8 +202,7 @@ sub parseALG {
     my %newRel = %relation;
     my %newAttribs = %attribs;
     return [\%newRel, \%newAttribs] if $valid;
-    print Dumper($algParser->{errors});
-    return [0] unless $valid;
+    return @{$algParser->{errors}}[0] unless $valid;
 }
 
 1;

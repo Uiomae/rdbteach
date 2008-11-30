@@ -28,7 +28,7 @@ use Wx::Perl::Carp;
 use parser;
 
 use Wx::Event qw(EVT_GRID_CMD_SELECT_CELL);
-use Wx::Event qw(EVT_STC_STYLENEEDED);
+use Wx::Event qw(EVT_STC_STYLENEEDED EVT_STC_CHANGE);
 
 # General constants
 use Wx qw(wxID_ANY wxPOINT wxSIZE);
@@ -130,17 +130,52 @@ sub fillRelation {
     return $grid;
 }
 
+sub onChange {
+    my ($self, $event) = @_;
+    my $codeEditor = ${$self->{codeEditor}};
+
+    my $style = $codeEditor->GetStyleAt($event->GetPosition());
+    if (($style & wxSTC_INDICS_MASK) == wxSTC_INDIC0_MASK) {
+        $self->markLine($codeEditor->LineFromPosition($event->GetPosition()));
+    }
+}
+
+sub unmarkLine {
+    my ($self, $line) = @_;
+    my $codeEditor = ${$self->{codeEditor}};
+
+    my ($start, $end) = (0, $codeEditor->GetLineEndPosition($line));
+    $start = $codeEditor->GetLineEndPosition($line - 1) if ($line > 0);
+    $codeEditor->StartStyling($start, wxSTC_INDICS_MASK);
+    print "Unmarking $start $end\n";
+    $codeEditor->SetStyling($end - $start, wxSTC_INDIC1_MASK);
+}
+
+sub markLine {
+    my ($self, $line) = @_;
+    my $codeEditor = ${$self->{codeEditor}};
+
+    my ($start, $end) = (0, $codeEditor->GetLineEndPosition($line));
+    $start = $codeEditor->GetLineEndPosition($line - 1) if ($line > 0);
+    $codeEditor->StartStyling($start, wxSTC_INDICS_MASK);
+    $codeEditor->SetStyling($end - $start, wxSTC_INDIC0_MASK);
+}
+
 sub parse {
     my $self = $_[0];
     my $DBRelation = $_[1];
     my $DBAttribs = $_[2];
     my $codeEditor = ${$self->{codeEditor}};
+    $self->SetStatusText("");
     my @result = &{$self->{parser}}($codeEditor->GetText(), $DBRelation, $DBAttribs);
-    if ($result[0][0] != 0) {
+    if (ref($result[0][0]) eq "HASH") {
         $self->{relation} = $result[0][0];
         $self->{attribs} = $result[0][1];
 
         $self->fillRelation();
+    } else {
+        $self->SetStatusText($result[0][0]);
+        $self->markLine($result[0][1] - 1);
     }
 }
 
@@ -413,6 +448,7 @@ sub new {
 
     $codeEditor->SetLexer(wxSTC_LEX_CONTAINER);
     EVT_STC_STYLENEEDED($self, ID_CODE_EDITOR, \&onStyleNeeded);
+    EVT_STC_CHANGE($self, ID_CODE_EDITOR, \&onChange);
 
     # Styles
     $codeEditor->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, "Courier New", 0, 0, 0);
@@ -499,6 +535,8 @@ sub new {
     #, $grid->GetSize()->GetWidth()
     $splitter->SplitVertically($win1, $win2);
     $self->fillRelation();
+
+    my $statusBar = $self->CreateStatusBar();
 
     # Restart redrawing
     $self->Thaw();
