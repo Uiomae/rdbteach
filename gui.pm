@@ -510,6 +510,7 @@ sub new {
         $self->{_isDB} = 0;
         if ($title eq "ALG") {
             $codeEditor->SetText($fileText);
+            $codeEditor->EmptyUndoBuffer();
             my @keywords = qw(select project);
             my @operands = qw(union njoin product difference intersect);
             $self->{keywords} = \@keywords;
