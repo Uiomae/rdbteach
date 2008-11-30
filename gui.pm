@@ -27,6 +27,17 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(initGUI);
 
+=begin nd
+    Function: initGUI
+        This function is called the very first time the program is run. Just initializes
+        wxWidgets graphics handlers and creates a new RDBTeachApp.
+
+    Parameters:
+        None
+
+    Returns:
+        Nothing (and never until end of program execution)
+=cut
 sub initGUI {
     # Init image handlers
     Wx::InitAllImageHandlers();
@@ -198,7 +209,7 @@ sub parse {
 }
 
 =begin nd
-    Function:
+    Function: onStyleNeeded
         This function is called everytime an EVT_STC_STYLENEEDED event is fired.
         That happens when the user load or modify the code in the Scintilla editor.
 
@@ -355,7 +366,7 @@ sub onStyleNeeded {
 }
 
 =begin nd
-    Function:
+    Function: onRelationSelect
         This function is called everytime an EVT_GRID_CMD_SELECT_CELL event is fired.
         That happens when the user selects any row in the relations grid.
 
@@ -421,7 +432,7 @@ sub onRelationSelect {
 }
 
 =begin nd
-    Function:
+    Function: isDB
         This function indicates if an object stores a database (RDB)
 
     Parameters:
@@ -436,7 +447,7 @@ sub isDB {
     return $self->{_isDB};
 }
 =begin nd
-    Function:
+    Function: new
         This function is called to create a new GridWindow
 
     Parameters:
@@ -582,6 +593,15 @@ use Wx qw(wxBITMAP_TYPE_PNG);
 # Toolbar constants
 use Wx qw(wxTB_FLAT wxTB_HORIZONTAL);
 
+=begin nd
+    Constants: IDs
+        ID_FILE_OPEN - ID assigned to the menu entry "File->Open" and "Open" toolbar button
+        ID_FILE_NEWDB - ID assigned to the menu entry "File->New Database" and "New Database" toolbar button
+        ID_FILE_NEWQUERY - ID assigned to the menu entry "File->New Query" and "New Query" toolbar button
+        ID_FILE_EXIT - ID assigned to the menu entry "File->Exit"
+
+        ID_CODE_EXECUTE - ID assigned to the "Execute" toolbar button
+=cut
 use constant ID_FILE_OPEN => 1;
 use constant ID_FILE_NEWDB => 2;
 use constant ID_FILE_NEWQUERY => 3;
@@ -589,6 +609,18 @@ use constant ID_FILE_EXIT => 4;
 
 use constant ID_CODE_EXECUTE => 5;
 
+=begin nd
+    Function: onFileExit
+        This function is called when the "File->Exit" menu entry is selected, and
+        asks the user before exiting if he really wants to close the application.
+
+    Parameters:
+        $self - Object owner
+        $event - Event information
+
+    Returns:
+        Nothing
+=cut
 # TODO: Replace that with an override of wxApp::OnExit
 sub onFileExit {
     my ($self, $event) = @_;
@@ -598,6 +630,19 @@ sub onFileExit {
     }
 }
 
+=begin nd
+    Function: onOpen
+        This function is fired when the user selects "File->Open" or clicks on the
+        "Open" toolbar button. It opens a file and creates a new child window for
+        it. Also, if the file is a database, gets its relation and attribs.
+
+    Parameters:
+        $self - Object owner
+        $event - Event information
+
+    Returns:
+        Nothing
+=cut
 sub onOpen {
     my ($self, $event) = @_;
 
@@ -613,6 +658,18 @@ sub onOpen {
     }
 }
 
+=begin nd
+    Function: onExecute
+        This function is fired when the user clicks on the "Execute" toolbar button.
+        It tries to parse the code present in the focused child window.
+
+    Parameters:
+        $self - Object owner
+        $event - Event information
+
+    Returns:
+        Nothing
+=cut
 sub onExecute {
     my ($self, $event) = @_;
 
@@ -622,8 +679,9 @@ sub onExecute {
         $child->parse($self->{DBRelation}, $self->{DBAttribs});
     }
 }
+
 =begin nd
-    Function:
+    Function: OnInit
         This method is called automatically when an application object is
         first constructed, all application-level initialization is done here.
 
