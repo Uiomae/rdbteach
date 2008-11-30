@@ -16,6 +16,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with RDBTeach.  If not, see <http://www.gnu.org/licenses/>.
 
+=begin nd
+    Package: gui
+        Main class holding the <initGUI> function.
+=cut
 package gui;
 use strict;
 use warnings;
@@ -48,6 +52,10 @@ sub initGUI {
     $app->MainLoop;
 }
 
+=begin nd
+    Package: GridWindow
+        This class holds the grids with the results and a code editor if needed.
+=cut
 package GridWindow;
 use strict;
 use warnings;
@@ -112,6 +120,18 @@ use constant CHAR_PAREN_CLOSE => 0x29;
 
 use base 'Wx::MDIChildFrame';
 
+=begin nd
+    Function: fillRelation
+        This function creates a new grid and fills it with the contents of the
+        relations present in the object. Used when loading a database or executing
+        any query.
+
+    Parameters:
+        $self - Object owner
+
+    Returns:
+        The new created grid.
+=cut
 sub fillRelation {
     my $self = shift;
     my $splitter = ${$self->{splitter}};
@@ -159,6 +179,20 @@ sub fillRelation {
     return $grid;
 }
 
+=begin nd
+    Function: onChange
+        This function fires when any change happen within the code editor
+        (EVT_STC_CHANGE event). Currently used for restoring any marked line,
+        but THIS DOESN'T WORK! (styles can't be changed in EVT_STC_CHANGE or
+        EVT_STC_MODIFIED events)
+
+    Parameters:
+        $self - Object owner
+        $event - Event information
+
+    Returns:
+        Nothing
+=cut
 sub onChange {
     my ($self, $event) = @_;
     my $codeEditor = ${$self->{codeEditor}};
@@ -169,6 +203,17 @@ sub onChange {
     }
 }
 
+=begin nd
+    Function: unmarkLine
+        This function unmarks any previously marked line.
+
+    Parameters:
+        $self - Object owner
+        $line - Line number (starting from 0)
+
+    Returns:
+        Nothing
+=cut
 sub unmarkLine {
     my ($self, $line) = @_;
     my $codeEditor = ${$self->{codeEditor}};
@@ -180,6 +225,17 @@ sub unmarkLine {
     $codeEditor->SetStyling($end - $start, wxSTC_INDIC1_MASK);
 }
 
+=begin nd
+    Function: markLine
+        This function marks the line number $line.
+
+    Parameters:
+        $self - Object owner
+        $line - Line number (starting from 0)
+
+    Returns:
+        Nothing
+=cut
 sub markLine {
     my ($self, $line) = @_;
     my $codeEditor = ${$self->{codeEditor}};
@@ -190,6 +246,20 @@ sub markLine {
     $codeEditor->SetStyling($end - $start, wxSTC_INDIC0_MASK);
 }
 
+=begin nd
+    Function: parse
+        This function parses the content of the code editor in the object owner.
+        The result is stored in the object internal variables relation and attribs,
+        and the relation grid is filled with the new results, unless there is any
+        error in the code. In this case, the first wrong line is marked and
+        the error message is put on the status bar of the window.
+
+    Parameters:
+        $self - Object owner
+
+    Returns:
+        Nothing
+=cut
 sub parse {
     my $self = $_[0];
     my $DBRelation = $_[1];
@@ -212,6 +282,8 @@ sub parse {
     Function: onStyleNeeded
         This function is called everytime an EVT_STC_STYLENEEDED event is fired.
         That happens when the user load or modify the code in the Scintilla editor.
+        The function does the actual syntax highlighting. This function badly
+        needs a code reformatting...
 
     Parameters:
         $self - Object owner
@@ -368,7 +440,9 @@ sub onStyleNeeded {
 =begin nd
     Function: onRelationSelect
         This function is called everytime an EVT_GRID_CMD_SELECT_CELL event is fired.
-        That happens when the user selects any row in the relations grid.
+        That happens when the user selects any row in the relations grid. The
+        function actually creates the right grid and fills it with the selected
+        relation on the left.
 
     Parameters:
         $self - Object owner
@@ -433,7 +507,7 @@ sub onRelationSelect {
 
 =begin nd
     Function: isDB
-        This function indicates if an object stores a database (RDB)
+        This function indicates if an object stores a database.
 
     Parameters:
         $self - Object owner
@@ -446,15 +520,16 @@ sub isDB {
     my $self = shift;
     return $self->{_isDB};
 }
+
 =begin nd
-    Function: new
-        This function is called to create a new GridWindow
+    Constructor: new
+        This function is called to create a new GridWindow.
 
     Parameters:
         $class - Object class (GridWindow)
 
     Returns:
-        A reference to the new created object
+        A reference to the new created object.
 =cut
 sub new {
     my $class = shift;
@@ -573,6 +648,10 @@ sub new {
     return $self;
 }
 
+=begin nd
+    Package: RDBTeachApp
+        Main application package. Creates the main MDI window, menus and toolbar.
+=cut
 package RDBTeachApp;
 use strict;
 use warnings;
