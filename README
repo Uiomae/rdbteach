@@ -15,7 +15,7 @@ When:
 What:
 	The code is written in Perl, and uses wxWidgets for the GUI to get native look'n feel, so you need Alien-wxWidgets and Wx packages. The parser is written using Parse::RecDescent, and if you're using ActiveState, you need to get the module from CPAN and NOT from PPM. PPM Parse::RecDescent module has a bug (well, any other than last version) that doesn't let my grammars compile.
 
-	RDBTeach uses the GREAT Silk icon set of Mark James from FamFamFam (http://www.famfamfam.com). Code is documented using the excelent NaturalDocs (http://www.naturaldocs.org). It's my first time using it, so if you see something that can be do in a better way, don't be afraid to tell me, I'll be thankful!
+	RDBTeach uses the GREAT Silk icon set of Mark James from FamFamFam (http://www.famfamfam.com). Code is documented using the excelent NaturalDocs (http://www.naturaldocs.org). It's my first time using it, so if you see something that can be done in a better way, don't be afraid to tell me, I'll be thankful!
 
 	Keep in mind that the soft is in VERY early stages. Syntax highlighting works (more or less), it has a *nice* GUI (just native to the system) but the error checking it's very bad at the moment. Also, my Perl skills maybe aren't the best out there...
 
