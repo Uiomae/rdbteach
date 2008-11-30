@@ -16,9 +16,17 @@
 #    You should have received a copy of the GNU General Public License
 #    along with RDBTeach.  If not, see <http://www.gnu.org/licenses/>.
 
+=begin nd
+    Package: parser
+        Holds the grammars and functions to parse databases and queries.
+=cut
 package parser;
 
 $main::RD_HINT = 1;
+
+=begin nd
+    Group: Generic Variables
+=cut
 
 use strict;
 use warnings;
@@ -30,11 +38,38 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(parseRDB parseALG);
 
-my @currentAttribs = [];
+=begin nd
+    Variables: Global Variables
+        This list of variables has to be substituted to package variables.
+
+        %relation - Holds a list of the current compiled relations
+        %attribs - Holds a list of the current compiled attributes (name / type)
+        $currentRelation - Holds a reference to the current relation in use (for
+            adding, etc) from <%relation>
+        @currentAttribs - Holds a list to the current attributes in use (for
+            adding, etc).
+=cut
 my %relation = ();
 my %attribs = ();
 my $currentRelation;
+my @currentAttribs = [];
 
+=begin nd
+    Group: General Grammar
+=cut
+
+=begin nd
+    Function: checkAssignment
+        This function assigns the query and attributes passed by parameter to the
+        relation variable also passed.
+
+    Parameters:
+        $relationName - The name of the relation to assign to.
+        $queryResult - Query result and attributes name / type.
+
+    Returns:
+        Nothing
+=cut
 sub checkAssignment {
     shift;
 
@@ -46,12 +81,12 @@ sub checkAssignment {
     $attribs{$relationName} = @{$queryResult}[1];
 }
 
-sub errorCheck {
-    my $msg = $_[0];
-    my $item = $_[1];
-    print @{$msg}[0] . ":" . $item . "\n";
-}
 
+=begin nd
+    Variable: $generalGrammar
+        Holds the grammar for all the querys common format (identifiers, comments,
+        etc).
+=cut
 my $generalGrammar = q(
     startrule : query_definition(s?) eofile | <error>
 
@@ -77,6 +112,22 @@ my $generalGrammar = q(
     relation_name : identifier | <error>
 );
 
+=begin nd
+    Group: Relational Algebra Grammar
+=cut
+
+=begin nd
+    Function: parseProject
+        This function is called when a project operation is made. Makes the actual
+        projection.
+
+    Parameters:
+        $attributes - The attributes to project
+        @expression - The expression on which the projection has to be made
+
+    Returns:
+        The resulting projection (a pair of relation and attributes name / type)
+=cut
 sub parseProject {
     shift;
     my $attributes = $_[2];
@@ -108,6 +159,17 @@ sub parseProject {
     return [\@tempRelation, \%tempAttribs];
 }
 
+=begin nd
+    Function: parseLiteExpression
+        This function checks if the liteExpression on the grammar was an identifier
+        or a resulting query.
+
+    Parameters:
+        An expression or an identifier
+
+    Returns:
+        The passed expression or a new one from the passed identifier
+=cut
 sub parseLiteExpression {
     shift;
     return $_[0] if (ref($_[0]) eq "ARRAY");
@@ -116,6 +178,10 @@ sub parseLiteExpression {
     return [$relation{$itemName}, $attribs{$itemName}];
 }
 
+=begin nd
+    Variable: $algGrammar
+        Holds the grammar for the relational algebra querys.
+=cut
 my $algGrammar = $generalGrammar . q(
     query : expression | <error>
 
@@ -137,6 +203,20 @@ my $algGrammar = $generalGrammar . q(
     relational_op : '=' | '>' | '<' | '<>' | '>=' | '<='
 );
 
+=begin nd
+    Group: RDB Database Grammar
+=cut
+
+=begin nd
+    Function: addRelation
+        This function adds a new relation to <%relation>.
+
+    Parameters:
+        $relationName - The name of the relation
+
+    Returns:
+        Nothing
+=cut
 sub addRelation {
     shift;
     $relation{$_[1]} = [];
@@ -150,6 +230,16 @@ sub addRelation {
     @currentAttribs = keys %tempHash;
 }
 
+=begin nd
+    Function: addTuple
+        This function adds a new tuple to <%currentRelation>.
+
+    Parameters:
+        @tuple - The tuple to add
+
+    Returns:
+        Nothing
+=cut
 sub addTuple {
     shift;
     my @tempTuple = @{$_[0]};
@@ -163,6 +253,16 @@ sub addTuple {
     return 1;
 }
 
+=begin nd
+    Function: checkChar
+        This function removes the quotes from strings
+
+    Parameters:
+        $string - The string to modify
+
+    Returns:
+        The new string without quotes
+=cut
 sub checkChar {
     shift;
     my $tempString = $_[0];
@@ -170,6 +270,10 @@ sub checkChar {
     return $tempString;
 }
 
+=begin nd
+    Variable: $rdbGrammar
+        Holds the grammar for the RDB databases.
+=cut
 my $rdbGrammar = q(
     startrule : (relation tuple(s?))(s?) eofile | <error>
 
@@ -195,10 +299,29 @@ my $rdbGrammar = q(
     tuple : constant(s /,/) { parser::addTuple(@item, $thisline); }
 );
 
+=begin nd
+    Group: External Interface
+=cut
+
+=begin nd
+    Variables: Actual parsers
+        $rdbParser - Contains the compiled RDB database parser
+        $algParser - Contains the compiled relational algebra parser
+=cut
 # Compile grammars
 my $rdbParser = Parse::RecDescent->new($rdbGrammar);
 my $algParser = Parse::RecDescent->new($algGrammar);
 
+=begin nd
+    Function: parseRDB
+        This function parses a relation.
+
+    Parameters:
+        $rdbText - The text of the RDB database
+
+    Returns:
+        An array with the relation and its attributes, or 0 if any error was encountered
+=cut
 sub parseRDB {
     my ($rdbText) = @_;
 
@@ -211,6 +334,19 @@ sub parseRDB {
     return 0 unless $validRDB;
 }
 
+=begin nd
+    Function: parseALG
+        This function parses a relational algebra code.
+
+    Parameters:
+        $algText - The code of the relational algebra queries.
+        $DBRelation - A reference to the database relations
+        $DBAttribs - A reference to the database relations attributes
+
+    Returns:
+        An array with the relation and its attributes, or with the text and line
+        number if any error was encountered
+=cut
 sub parseALG {
     my ($algText, $DBRelation, $DBAttribs) = @_;
     # Make a copy of the passed values
