@@ -179,6 +179,91 @@ sub parseLiteExpression {
 }
 
 =begin nd
+    Function: opUnion
+        This function performs a binary operation (union) on two operands.
+
+    Parameters:
+        $op1 - The first operand
+        $op2 - The second operand
+
+    Returns:
+        The result of the operation as pair of relation and attributes name / type
+=cut
+sub opUnion {
+    my @op1 = @{$_[0]};
+    my @op2 = @{$_[1]};
+
+}
+
+=begin nd
+    Function: opNJoin
+        This function performs a binary operation (natural join) on two operands.
+
+    Parameters:
+        $op1 - The first operand
+        $op2 - The second operand
+
+    Returns:
+        The result of the operation as pair of relation and attributes name / type
+=cut
+sub opNJoin {
+    my @op1 = @{$_[0]};
+    my @op2 = @{$_[1]};
+
+}
+
+=begin nd
+    Function: opProduct
+        This function performs a binary operation (product) on two operands.
+
+    Parameters:
+        $op1 - The first operand
+        $op2 - The second operand
+
+    Returns:
+        The result of the operation as pair of relation and attributes name / type
+=cut
+sub opProduct {
+    my @op1 = @{$_[0]};
+    my @op2 = @{$_[1]};
+
+}
+
+=begin nd
+    Function: opDifference
+        This function performs a binary operation (difference) on two operands.
+
+    Parameters:
+        $op1 - The first operand
+        $op2 - The second operand
+
+    Returns:
+        The result of the operation as pair of relation and attributes name / type
+=cut
+sub opDifference {
+    my @op1 = @{$_[0]};
+    my @op2 = @{$_[1]};
+
+}
+
+=begin nd
+    Function: opIntersect
+        This function performs a binary operation (intersection) on two operands.
+
+    Parameters:
+        $op1 - The first operand
+        $op2 - The second operand
+
+    Returns:
+        The result of the operation as pair of relation and attributes name / type
+=cut
+sub opIntersect {
+    my @op1 = @{$_[0]};
+    my @op2 = @{$_[1]};
+
+}
+
+=begin nd
     Variable: $algGrammar
         Holds the grammar for the relational algebra querys.
 =cut
