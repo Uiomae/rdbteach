@@ -10,6 +10,7 @@
 	my %s;
 
 	use constant S_ERR_ATTRTYPE => 10;
+	use constant S_ERR_ATTRNONEXIST => 11;
 %}
 
 %%
@@ -31,7 +32,7 @@ constants
 	;
 
 relation
-	: '@' ID '(' attributes ')' ':' identifiers NEWLINE
+	: '@' ID '(' attributes ')' ':' identifiers NEWLINE { my $id = _CheckAttrs($_[7]); _SemanticError($_[0], S_ERR_ATTRNONEXIST, $id) if defined $id; }
 	;
 
 attributes
@@ -60,15 +61,31 @@ typename
 
 my $lineno = 1;
 
+sub _CheckAttrs {
+	my ($attrs) = shift;
+
+	foreach my $attr (@$attrs) {
+		return $attr unless defined $s{@$attr[0]};
+	}
+	return undef;
+}
+
 sub _SemanticError {
 	my $parser = shift;
 	my $errType = shift;
 	
 	my ($err, $lineno);
-	if ($errType == S_ERR_ATTRTYPE) {
-		my ($id, $type) = @_;
-		$lineno = @$id[1];
-		$err = "Type of previous declared attribute '@$id[0]' (@{$s{@$id[0]}}[0]) at line @{$s{@$id[0]}}[1]\ndoesn't match with new declared type (@$type[0])"
+	for ($errType) {
+		$_ == S_ERR_ATTRTYPE and do {
+			my ($id, $type) = @_;
+			$lineno = @$id[1];
+			$err = "Type of previous declared attribute '@$id[0]' (@{$s{@$id[0]}}[0]) at line @{$s{@$id[0]}}[1]\ndoesn't match with new declared type (@$type[0])";
+		};
+		$_ == S_ERR_ATTRNONEXIST and do {
+			my ($id) = @_;
+			$lineno = @$id[1];
+			$err = "Attribute '@$id[0]' doesn't exist";
+		};
 	}
 	die << "ERRMSG";
 Semantic error: $err at line $lineno
