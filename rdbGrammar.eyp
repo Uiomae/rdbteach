@@ -67,6 +67,15 @@ sub _NewRel {
 	_SemanticError($parser, S_ERR_RELEXISTS, $relName) if defined $rel{@$relName[0]};
 
 	$rel{@$relName[0]} = { "tuples" => [], "attribs" => [], "keys" => [], "line" => @$relName[1] };
+	my %tempRel = %{$rel{@$relName[0]}};
+	# Add attributes
+	foreach my $attrib (@$attribs) {
+		push(@{$tempRel{"attribs"}}, $attrib);
+	}
+	# Add keys
+	foreach my $key (@$keys) {
+		push(@{$tempRel{"keys"}}, @$key[0]);
+	}
 	use Data::Dumper;
 	print Dumper(%rel);
 }
