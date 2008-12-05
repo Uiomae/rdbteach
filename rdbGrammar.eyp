@@ -39,7 +39,7 @@ attributes
 	;
 
 attribute
-	: ID '/' typename { my ($id, $type) = ($_[1], $_[3]); _SemanticError($_[0], S_ERR_ATTRTYPE, $id, $type) if ((defined $s{@$id[0]}) and ($s{@$id[0]} ne @$type[0])); $s{@$id[0]} = @$type[0]; }
+	: ID '/' typename { my ($id, $type) = ($_[1], $_[3]); _SemanticError($_[0], S_ERR_ATTRTYPE, $id, $type) if ((defined $s{@$id[0]}) and (@{$s{@$id[0]}}[0] ne @$type[0])); $s{@$id[0]} = $type; }
 	;
 
 identifiers
@@ -68,7 +68,7 @@ sub _SemanticError {
 	if ($errType == S_ERR_ATTRTYPE) {
 		my ($id, $type) = @_;
 		$lineno = @$id[1];
-		$err = "Type of previous declared attribute '@$id[0]' ($s{@$id[0]})\ndoesn't match with new declared type (@$type[0])"
+		$err = "Type of previous declared attribute '@$id[0]' (@{$s{@$id[0]}}[0]) at line @{$s{@$id[0]}}[1]\ndoesn't match with new declared type (@$type[0])"
 	}
 	die << "ERRMSG";
 Semantic error: $err at line $lineno
