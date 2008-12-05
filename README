@@ -13,7 +13,7 @@ When:
 	For now, RDBTeach only supports relational algebra, but it's easily modifiable. I'm planning to support at least relational algebra and relational calculus (tuples and domain).
 
 What:
-	The code is written in Perl, and uses wxWidgets for the GUI to get native look'n feel, so you need Alien-wxWidgets and Wx packages. The parser is written using Parse::RecDescent, and if you're using ActiveState, you need to get the module from CPAN and NOT from PPM. PPM Parse::RecDescent module has a bug (well, any other than last version) that doesn't let my grammars compile.
+	The code is written in Perl, and uses wxWidgets for the GUI to get native look'n feel, so you need Alien-wxWidgets and Wx packages. The parser is written using Parse::Eyapp (tested with, at least, version 1.132) from Casiano León Rodríguez, a VERY great former professor of mine.
 
 	RDBTeach uses the GREAT Silk icon set of Mark James from FamFamFam (http://www.famfamfam.com). Code is documented using the excelent NaturalDocs (http://www.naturaldocs.org). It's my first time using it, so if you see something that can be done in a better way, don't be afraid to tell me, I'll be thankful!
 
