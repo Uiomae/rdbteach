@@ -37,7 +37,7 @@ relation
 	;
 
 attributes
-	: attribute (',' attribute { $_[2]; })* { push(@{$_[2]}, $_[1]); return $_[2]; }
+	: attribute (',' attribute { $_[2]; })* { unshift(@{$_[2]}, $_[1]); return $_[2]; }
 	;
 
 attribute
@@ -45,7 +45,7 @@ attribute
 	;
 
 identifiers
-	: ID (',' ID { $_[2]; })* { push(@{$_[2]}, $_[1]); return $_[2]; }
+	: ID (',' ID { $_[2]; })* { unshift(@{$_[2]}, $_[1]); return $_[2]; }
 	;
 	
 constant 
