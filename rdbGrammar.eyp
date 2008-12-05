@@ -142,7 +142,7 @@ sub make_lexer {
 			m{\G(char|numeric)}gc           and return ($1, [$1, $beginline]);
 			m{\G([0-9]+(?:\.[0-9]+)?)}gc    and return ('NUM', [$1, $beginline]);
 			m{\G([A-Za-z_][A-Za-z0-9_]*)}gc and return ('ID', [$1, $beginline]);
-			m{\G((["'])(.*)\2)}gc           and return ('CHAR', [$3, $beginline]);	# Just for Vim syntax highlighting matching the '"
+			m{\G((["'])(.*?)\2)}gc           and return ('CHAR', [$3, $beginline]);	# Just for Vim syntax highlighting matching the '"
 			#m{\G\r}gc                       and return ("\r", ["\r", $beginline]);
 			m{\G\n}gc                       and do { $lineno++; return ("NEWLINE", ["\n", $beginline]) };
 			m{\G(.)}gc                      and return ($1,    [$1, $beginline]);
