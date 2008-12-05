@@ -39,11 +39,11 @@ attributes
 	;
 
 attribute
-	: ID '/' typename { my ($id, $type) = ($_[1][0], $_[3][0]); _SemanticError($_[0], S_ERR_ATTRTYPE, $id, $type) if ((defined $s{$id}) and ($s{$id} ne $type)); $s{$id} = $_[3][0]; }
+	: ID '/' typename { my ($id, $type) = ($_[1], $_[3]); _SemanticError($_[0], S_ERR_ATTRTYPE, $id, $type) if ((defined $s{@$id[0]}) and ($s{@$id[0]} ne @$type[0])); $s{@$id[0]} = @$type[0]; }
 	;
 
 identifiers
-	: ID (',' ID { $_[2]; })* { use Data::Dumper; print Dumper($_[2]); }
+	: ID (',' ID { $_[2]; })* { push(@{$_[2]}, $_[1]); return $_[2]; }
 	;
 	
 constant 
@@ -64,13 +64,14 @@ sub _SemanticError {
 	my $parser = shift;
 	my $errType = shift;
 	
-	my $err;
+	my ($err, $lineno);
 	if ($errType == S_ERR_ATTRTYPE) {
 		my ($id, $type) = @_;
-		$err = "Type of previous declared attribute '$id' ($s{$id})\ndoesn't match with new declared type ($type)"
+		$lineno = @$id[1];
+		$err = "Type of previous declared attribute '@$id[0]' ($s{@$id[0]})\ndoesn't match with new declared type (@$type[0])"
 	}
 	die << "ERRMSG";
-Semantic error: $err
+Semantic error: $err at line $lineno
 ERRMSG
 }
 
