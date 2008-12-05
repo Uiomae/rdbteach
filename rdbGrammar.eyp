@@ -7,10 +7,11 @@
 %{
 	use Carp;
 	our $VERSION = '0.01';
-	my %s;
+	my (%s, %rel);
 
 	use constant S_ERR_ATTRTYPE => 10;
 	use constant S_ERR_ATTRNONEXIST => 11;
+	use constant S_ERR_RELEXISTS => 12;
 %}
 
 %%
@@ -32,15 +33,15 @@ constants
 	;
 
 relation
-	: '@' ID '(' attributes ')' ':' identifiers NEWLINE { my $id = _CheckAttrs($_[7]); _SemanticError($_[0], S_ERR_ATTRNONEXIST, $id) if defined $id; }
+	: '@' ID '(' attributes ')' ':' identifiers NEWLINE { my $id = _CheckAttrs($_[7]); _SemanticError($_[0], S_ERR_ATTRNONEXIST, $id) if defined $id; _NewRel(@_); }
 	;
 
 attributes
-	: attribute (',' attribute)* 
+	: attribute (',' attribute { $_[2]; })* { push(@{$_[2]}, $_[1]); return $_[2]; }
 	;
 
 attribute
-	: ID '/' typename { my ($id, $type) = ($_[1], $_[3]); _SemanticError($_[0], S_ERR_ATTRTYPE, $id, $type) if ((defined $s{@$id[0]}) and (@{$s{@$id[0]}}[0] ne @$type[0])); $s{@$id[0]} = $type; }
+	: ID '/' typename { my ($id, $type) = ($_[1], $_[3]); _SemanticError($_[0], S_ERR_ATTRTYPE, $id, $type) if ((defined $s{@$id[0]}) and (@{$s{@$id[0]}}[0] ne @$type[0])); $s{@$id[0]} = $type; [@$id[0], @$type[0]]; }
 	;
 
 identifiers
@@ -60,6 +61,15 @@ typename
 %%
 
 my $lineno = 1;
+
+sub _NewRel {
+	my ($parser, $relName, $attribs, $keys) = ($_[0], $_[2], $_[4], $_[7]);
+	_SemanticError($parser, S_ERR_RELEXISTS, $relName) if defined $rel{@$relName[0]};
+
+	$rel{@$relName[0]} = { "tuples" => [], "attribs" => [], "keys" => [], "line" => @$relName[1] };
+	use Data::Dumper;
+	print Dumper(%rel);
+}
 
 sub _CheckAttrs {
 	my ($attrs) = shift;
@@ -85,6 +95,12 @@ sub _SemanticError {
 			my ($id) = @_;
 			$lineno = @$id[1];
 			$err = "Attribute '@$id[0]' doesn't exist";
+		};
+		$_ == S_ERR_RELEXISTS and do {
+			my ($id) = @_;
+			$lineno = @$id[1];
+			my %temp = %{$rel{@$id[0]}};
+			$err = "Relation '@$id[0]' already exists (previously defined at line $temp{line})";
 		};
 	}
 	die << "ERRMSG";
