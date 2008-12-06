@@ -62,7 +62,8 @@ use warnings;
 use Wx::Grid;
 use Wx::STC;
 use Wx::Perl::Carp;
-use parser;
+use rdbGrammar;
+use Tie::IxHash;
 
 use Wx::Event qw(EVT_GRID_CMD_SELECT_CELL);
 use Wx::Event qw(EVT_STC_STYLENEEDED EVT_STC_CHANGE);
@@ -135,10 +136,10 @@ use base 'Wx::MDIChildFrame';
 sub fillRelation {
     my $self = shift;
     my $splitter = ${$self->{splitter}};
-    my %relation = %{$self->{relation}};
+    my $relation = $self->{relation};
 
     my $win1 = $splitter->GetWindow1();
-    my $nRows = scalar keys(%relation);
+    my $nRows = scalar keys(%$relation);
 
     # Stop redrawing
     $win1->Freeze();
@@ -152,9 +153,9 @@ sub fillRelation {
 
     # Fill relation grid
     my $counter = 0;
-    while(my ($key, $value) = each(%relation)) {
+    while(my ($key, $value) = each(%$relation)) {
         $grid->SetCellValue($counter, 0, $key);
-        $grid->SetCellValue($counter++, 1, scalar @{$value});
+        $grid->SetCellValue($counter++, 1, scalar @{$value->{tuples}});
     }
 
     $grid->SetColLabelValue(0, "Relation Name");
@@ -454,12 +455,11 @@ sub onStyleNeeded {
 sub onRelationSelect {
     my ($self, $event) = @_;
     my $splitter = ${$self->{splitter}};
-    my %relation = %{$self->{relation}};
-    my %attribs = %{$self->{attribs}};
+    my $relation = $self->{relation};
 
     my $object = $event->GetEventObject();
     my $relName = $object->GetCellValue($event->GetRow(), 0);
-    my @tableData = @{$relation{$relName}};
+    my $tableData = $relation->{$relName}->{tuples};
 
     my $win2 = $splitter->GetWindow2();
 
@@ -471,23 +471,24 @@ sub onRelationSelect {
     # Add a new grid
     my $grid = Wx::Grid->new($win2, wxID_ANY);
 
-    my %currentAttribs = %{$attribs{$relName}};
-    $grid->CreateGrid(scalar @tableData, scalar keys %currentAttribs);
+    my $currentAttribs = $relation->{$relName}->{attribs};
+    $grid->CreateGrid(scalar @$tableData, scalar keys %$currentAttribs);
 
     # Fill table
     my $counter = 0;
     my %colOrder = ();
     # First set the column labels
-    while(my ($key, $value) = each(%currentAttribs)) {
+    while(my ($key, $value) = each(%$currentAttribs)) {
         $colOrder{$key} = $counter;
         $grid->SetColLabelValue($counter++, $key . '/' . $value);
     }
 
     # Next, fill the current values
     $counter = 0;
-    foreach my $tuple (@tableData) {
-        while(my ($key, $value) = each(%$tuple)) {
-            $grid->SetCellValue($counter, $colOrder{$key}, $value);
+    foreach my $tuple (@$tableData) {
+        my $counter2 = 0;
+        foreach my $value (@$tuple) {
+            $grid->SetCellValue($counter, $counter2++, $value);
         }
         $counter++;
     }
@@ -602,13 +603,15 @@ sub new {
         $mainSplitter->Initialize($mainWin2);
         $mainWin2->Layout();
 
-        my @temp = parser::parseRDB($fileText);
-        if (@temp == 0) {
-            croak "Error parsing RDB file";
+        my $parser = new rdbGrammar();
+        my @temp = $parser->Run($fileText);
+        use Data::Dumper;
+        if (defined $temp[0][1][0][0]) {
+            croak $temp[0][1][0][0];
         } else {
             $self->{_isDB} = 1;
+            tie (%relation, "Tie::IxHash");
             %relation = %{$temp[0][0]};
-            %attribs = %{$temp[0][1]};
         }
     } else {
         $self->{_isDB} = 0;
@@ -656,7 +659,6 @@ package RDBTeachApp;
 use strict;
 use warnings;
 use Wx::Perl::Carp;
-use parser;
 
 use base 'Wx::App';
 use Wx::Event qw(EVT_BUTTON EVT_MENU EVT_TOOL);
