@@ -7,7 +7,7 @@
 %{
 	use Carp;
 	our $VERSION = '0.01';
-	my (%s, %rel);
+	my (%s, %rel, $currentRel);
 
 	use constant S_ERR_ATTRTYPE => 10;
 	use constant S_ERR_ATTRNONEXIST => 11;
@@ -17,7 +17,7 @@
 %%
 
 start
-	: prog
+	: prog { \%rel; }
 	;
 
 prog
@@ -25,11 +25,11 @@ prog
 	;
 
 tuple
-	: constants NEWLINE
+	: constants NEWLINE { _AddTuple(@_); }
 	;
 
 constants 
-	: constant (',' constant)*
+	: constant (',' constant { $_[2]; })* { unshift(@{$_[2]}, $_[1]); return $_[2]; }
 	;
 
 relation
@@ -62,22 +62,31 @@ typename
 
 my $lineno = 1;
 
+sub _AddTuple {
+	my ($parser, $constants) = @_;
+
+	# TODO: Check tuple types
+	my @tuple;
+	foreach my $constant (@$constants) {
+		push(@tuple, @$constant[0]);
+	}
+	push(@{$currentRel->{tuples}}, [@tuple]);
+}
+
 sub _NewRel {
 	my ($parser, $relName, $attribs, $keys) = ($_[0], $_[2], $_[4], $_[7]);
 	_SemanticError($parser, S_ERR_RELEXISTS, $relName) if defined $rel{@$relName[0]};
 
 	$rel{@$relName[0]} = { "tuples" => [], "attribs" => [], "keys" => [], "line" => @$relName[1] };
-	my %tempRel = %{$rel{@$relName[0]}};
+	$currentRel = \%{$rel{@$relName[0]}};
 	# Add attributes
 	foreach my $attrib (@$attribs) {
-		push(@{$tempRel{"attribs"}}, $attrib);
+		push(@{$currentRel->{"attribs"}}, $attrib);
 	}
 	# Add keys
 	foreach my $key (@$keys) {
-		push(@{$tempRel{"keys"}}, @$key[0]);
+		push(@{$currentRel->{"keys"}}, @$key[0]);
 	}
-	use Data::Dumper;
-	print Dumper(%rel);
 }
 
 sub _CheckAttrs {
@@ -167,6 +176,6 @@ sub Run {
 	my $input = shift;
 use Data::Dumper;
 print Dumper("Symbol table" . %s);
-	return [%s, $self->YYParse( yylex => make_lexer($input), yyerror => \&_Error )];
+	return $self->YYParse( yylex => make_lexer($input), yyerror => \&_Error );
 }
 
