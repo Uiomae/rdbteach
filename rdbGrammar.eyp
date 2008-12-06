@@ -5,9 +5,11 @@
 %token NEWLINE
 
 %{
-	use Carp;
+	use Tie::IxHash;
 	our $VERSION = '0.01';
 	my (%s, %rel, $currentRel);
+	tie (%rel, "Tie::IxHash");
+	my @errors = undef;
 
 	use constant S_ERR_ATTRTYPE => 10;
 	use constant S_ERR_ATTRNONEXIST => 11;
@@ -17,7 +19,7 @@
 %%
 
 start
-	: prog { \%rel; }
+	: prog { [\%rel, \@errors]; }
 	;
 
 prog
@@ -77,11 +79,12 @@ sub _NewRel {
 	my ($parser, $relName, $attribs, $keys) = ($_[0], $_[2], $_[4], $_[7]);
 	_SemanticError($parser, S_ERR_RELEXISTS, $relName) if defined $rel{@$relName[0]};
 
-	$rel{@$relName[0]} = { "tuples" => [], "attribs" => [], "keys" => [], "line" => @$relName[1] };
+	$rel{@$relName[0]} = { "tuples" => [], "attribs" => {}, "keys" => [], "line" => @$relName[1] };
 	$currentRel = \%{$rel{@$relName[0]}};
 	# Add attributes
+	tie (%{$currentRel->{attribs}}, "Tie::IxHash");
 	foreach my $attrib (@$attribs) {
-		push(@{$currentRel->{"attribs"}}, $attrib);
+		$currentRel->{attribs}{$attrib->[0]} = $attrib->[1];
 	}
 	# Add keys
 	foreach my $key (@$keys) {
@@ -121,30 +124,24 @@ sub _SemanticError {
 			$err = "Relation '@$id[0]' already exists (previously defined at line $temp{line})";
 		};
 	}
-	die << "ERRMSG";
-Semantic error: $err at line $lineno
-ERRMSG
+	@errors = ["Semantic error: $err at line $lineno", $lineno];
 }
 
 sub _Error {
-  my $parser = shift;
-  my $yydata = $parser->YYData;
+	my $parser = shift;
+	my $yydata = $parser->YYData;
 
-    exists $yydata->{ERRMSG}
-  and do {
-      warn $yydata->{ERRMSG};
-      delete $yydata->{ERRMSG};
-      return;
-  };
-  my($token)=$parser->YYCurval;
-  my($what)= $token->[0] ? "input: '$token->[0]'" : "end of input";
-  my @expected = $parser->YYExpect();
-  local $" = ', ';
-  warn << "ERRMSG";
-
-Syntax error near $what (lin num $token->[1]). 
-Expected one of these terminals: @expected
-ERRMSG
+	my($token)=$parser->YYCurval;
+	exists $yydata->{ERRMSG}
+	and do {
+		@errors = [$yydata->{ERRMSG}, $token->[1]];
+		delete $yydata->{ERRMSG};
+		return;
+	};
+	my($what)= $token->[0] ? "input: '$token->[0]'" : "end of input";
+	my @expected = $parser->YYExpect();
+	local $" = ', ';
+	@errors = ["Syntax error near $what (lin num $token->[1]).\nExpected one of these terminals: @expected", $token->[1]];
 }
 
 sub make_lexer {
@@ -174,8 +171,6 @@ sub Run {
 	my ($self) = shift;
 
 	my $input = shift;
-use Data::Dumper;
-print Dumper("Symbol table" . %s);
 	return $self->YYParse( yylex => make_lexer($input), yyerror => \&_Error );
 }
 
